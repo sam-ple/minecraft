@@ -428,13 +428,6 @@ elif user_input == "fishrod":
 elif user_input == "cheatpack":
     cheatpack()
 
-elif user_input == "armor":
-    minescript.execute('/item replace entity @p weapon.mainhand with minecraft:diamond_sword')
-    minescript.execute('/item replace entity @p armor.head with minecraft:diamond_helmet')
-    minescript.execute('/item replace entity @p armor.chest with minecraft:diamond_chestplate')
-    minescript.execute('/item replace entity @p armor.legs with minecraft:diamond_leggings')
-    minescript.execute('/item replace entity @p armor.feet with minecraft:diamond_boots{Trim:{material:"minecraft:amethyst",pattern:"minecraft:silence"}} 1')
-
 # ------------------------------------------------------------ 
 # 周囲にフレンドリーな動物を召喚
 # ------------------------------------------------------------ 
