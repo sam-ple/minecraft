@@ -213,7 +213,7 @@ def flatten():
 # ============================================================
 # 関数：ベースキット
 # ============================================================
-def base_kit():
+def basekit():
 #    minescript.execute('/title @a title {"text":"ベースキットを設置","color":"yellow","bold":true}')
     x, y, z = minescript.player_position()
     minescript.execute(f"/tp @p {x} {y} {z} 0 0")  # 南向きに
@@ -556,8 +556,8 @@ elif user_input == "fireworks":
 # ------------------------------------------------------------
 # 作業台・かまど・チェストセットを配置
 # ------------------------------------------------------------
-elif user_input == "base_kit":
-    base_kit()
+elif user_input == "basekit":
+    basekit()
 
 # ------------------------------------------------------------
 # プレイヤーの現在位置を表示
