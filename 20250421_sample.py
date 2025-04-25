@@ -200,37 +200,6 @@ elif user_input == "tower":
         if block_type:
             minescript.execute(f"/setblock {x} {y + i} {z} minecraft:{block_type}")
         else:
-            minescript.execute(f"/setblock {x} {y + i} {z} minecraft:air")
-
-    if arg1 == "reset":
-        # ゆっくり落下 + 落下ダメージ防止（5秒）
-        minescript.execute("/effect give @p minecraft:slow_falling 5 0 true")
-        # 任意で耐性（軽減）もつけたい場合は以下も有効に
-        # minescript.execute("/effect give @p minecraft:resistance 5 1 true")
-        minescript.echo("☁️ タワーを破壊しました！")
-    else:
-        minescript.execute(f"/tp @p {x + 0.5} {y + height} {z + 0.5}")
-        minescript.echo(f"🧱 {block_type} のタワーを建てて上に移動しました！")
-
-elif user_input == "tower":
-    x, y, z = map(int, minescript.player_position())
-    height = 10
-
-    if arg1 == "1":
-        block_type = "stripped_pale_oak_wood"
-    elif arg1 == "2":
-        block_type = "quartz_block"
-    elif arg1 == "3":
-        block_type = "grass_block"
-    elif arg1 == "reset":
-        block_type = None
-    else:
-        block_type = "stripped_pale_oak_wood"
-
-    for i in range(height):
-        if block_type:
-            minescript.execute(f"/setblock {x} {y + i} {z} minecraft:{block_type}")
-        else:
             # reset のとき、足元〜下に向かって壊す
             minescript.execute(f"/setblock {x} {y - i} {z} minecraft:air")
 
