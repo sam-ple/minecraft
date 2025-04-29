@@ -10,10 +10,13 @@ from datetime import datetime
 # -------------------------
 # 外部ライブラリ
 # -------------------------
+# import minescript as msc
 import minescript
 from minescript import (execute, echo)
 
-
+# -------------------------
+# 引数
+# -------------------------
 arg1 = argv[1] if len(argv) > 1 else (echo("コマンドを指定してください。") or exit(1))
 arg2 = argv[2] if len(argv) > 2 else None  # 指定がなければ None
 
@@ -66,63 +69,68 @@ elif arg1 == "1.21.5":
         echo("🥚 1.21.5でアップデートされたスポーンエッグの一部を付与しました！")
 
 # ------------------------------------------------------------
-# スタート
+# スタート／エンド
 # ------------------------------------------------------------
-elif arg1 == "start":
-    # Ready...
-    execute('/title @a title {"text":"Ready...","color":"aqua","bold":true}')
-    sleep(1)
-    
-    # 3, 2, 1 countdown with bell sound
-    for count in ["3", "2", "1"]:
-        execute(f'/title @a title {{"text":"{count}","color":"aqua","bold":true}}')
-        execute('/playsound minecraft:block.bell.use master @a')
+elif arg1 == "phase":
+    if arg2 == "start":
+        # カウントダウン＆ベル
+        execute('/title @a title {"text":"Ready...","color":"aqua","bold":true}')
         sleep(1)
-    
-    # Go! with horn sound
-    execute('/title @a title {"text":"Go!","color":"aqua","bold":true}')
-    execute('/playsound minecraft:entity.pillager.celebrate master @a')
-    sleep(0.5)
-    
-    echo("スタート！")
+        for count in ["3", "2", "1"]:
+            execute(f'/title @a title {{"text":"{count}","color":"aqua","bold":true}}')
+            execute('/playsound minecraft:block.bell.use master @a')
+            sleep(1)
+        # スタート＆音声
+        execute('/title @a title {"text":"Go!","color":"aqua","bold":true}')
+        execute('/playsound minecraft:entity.pillager.celebrate master @a')
+        sleep(0.5)
+        # エコーでメッセージ
+        echo("スタート！")
+
+    elif arg2 == "end":
+        # 終了タイトル表示
+        execute('/title @a title {"text":"終了！","color":"aqua","bold":true}')
+        sleep(0.5)
+        # 花火をプレイヤーの位置で打ち上げ（全員）
+        execute('/execute as @a at @s run summon firework_rocket ~ ~1 ~ {LifeTime:20,FireworksItem:{id:"minecraft:firework_rocket",Count:1,tag:{Fireworks:{Explosions:[{Type:1,Flicker:1,Colors:[11743532]}],Flight:1}}}}')
+        # 花火音（補助）
+        execute('/playsound minecraft:entity.firework_rocket.launch master @a')
+        sleep(0.5)
+        # プレイヤーをふわっと上昇（上方向にリフト）
+        execute('/effect give @a minecraft:levitation 2 3 true')  # 2秒間、少し強めに
+        # ゆっくり暗転（夜に）
+        execute('/time set night')
+        # エコーでメッセージ
+        echo("終了！")
 
 # ------------------------------------------------------------
 # ミュージック
 # ------------------------------------------------------------
+# execute('/playsound minecraft:music.overworld.jaguar record @p ~ ~ ~ 1')
+# execute('/playsound minecraft:music.creative record @p ~ ~ ~ 1')
+# execute('/playsound minecraft:music.game record @p ~ ~ ~ 1')
+# execute('/playsound minecraft:music.menu record @p ~ ~ ~ 1')
+# execute('/playsound minecraft:music_disc.cat record @p ~ ~ ~ 1')
 elif arg1 == "music":
-    # 癒し系BGM（静かな音楽）
-    execute('/playsound minecraft:music.overworld.meadow music @p')
-#    execute('/playsound minecraft:music.overworld.grove music @p')
-#    execute('/playsound minecraft:music.overworld.forest music @p')
-    echo("ミュージックスタート♬")
-
-elif arg1 == "musicstop":
-    execute('/stopsound @p music')
-    echo("音楽を停止しました。")
-
-# ------------------------------------------------------------
-# エンド
-# ------------------------------------------------------------
-elif arg1 == "end":
-    # 終了タイトル表示
-    execute('/title @a title {"text":"終了！","color":"aqua","bold":true}')
-    sleep(0.5)
-
-    # 花火をプレイヤーの位置で打ち上げ（全員）
-    execute('/execute as @a at @s run summon firework_rocket ~ ~1 ~ {LifeTime:20,FireworksItem:{id:"minecraft:firework_rocket",Count:1,tag:{Fireworks:{Explosions:[{Type:1,Flicker:1,Colors:[11743532]}],Flight:1}}}}')
-
-    # 花火音（補助）
-    execute('/playsound minecraft:entity.firework_rocket.launch master @a')
-    sleep(0.5)
-
-    # プレイヤーをふわっと上昇（上方向にリフト）
-    execute('/effect give @a minecraft:levitation 2 3 true')  # 2秒間、少し強めに
-
-    # ゆっくり暗転（夜に）
-    execute('/time set night')
-
-    # エコーでメッセージ
-    echo("終了！")
+    if arg2 == "1":
+        # Meadow BGM
+        execute('/playsound minecraft:music.overworld.meadow music @p')
+        echo("Meadow 音楽が再生されました。")
+    
+    elif arg2 == "2":
+        # Grove BGM
+        execute('/playsound minecraft:music.overworld.grove music @p')
+        echo("Grove 音楽が再生されました。")
+    
+    elif arg2 == "3":
+        # Forest BGM
+        execute('/playsound minecraft:music.overworld.forest music @p')
+        echo("Forest 音楽が再生されました。")
+    
+    elif arg2 == "stop":
+        # 音楽停止
+        execute('/stopsound @p music')
+        echo("音楽を停止しました。")
 
 # ------------------------------------------------------------
 # モブ召喚
@@ -132,22 +140,129 @@ elif arg1 == "mobs":
     x, y, z = minescript.player_position()
     
     # アレイを出現させる数と半径
-    num_allays = 24       # アレイの数（例：24体）
-    radius = 5            # プレイヤーからの距離（円の半径）
+    num_allays = 12       # アレイの数（例：24体）
+    radius = 1            # プレイヤーからの距離（円の半径）
     
     # 放射状にアレイを配置
     for i in range(num_allays):
         angle = 2 * math.pi * i / num_allays
         dx = round(math.cos(angle) * radius, 2)
         dz = round(math.sin(angle) * radius, 2)
+        sy = y
         sx = x + dx
         sz = z + dz
-        execute(f'/summon minecraft:allay {sx} {y} {sz} {{}}')
+        execute(f'/summon minecraft:allay {sx} {sy} {sz} {{}}')
     
     # 視覚＆音の演出
     execute('/playsound minecraft:entity.allay.ambient_with_item master @a')
+
+    sleep(5)
+
+    # プレイヤーの位置を取得
+    x, y, z = minescript.player_position()
     
-    echo("円形にアレイを召喚しました！")
+    # アレイを出現させる数と半径
+    num_allays = 12       # アレイの数（例：24体）
+    radius = 1            # プレイヤーからの距離（円の半径）
+    
+    # 放射状にアレイを配置
+    for i in range(num_allays):
+        angle = 2 * math.pi * i / num_allays
+        dx = round(math.cos(angle) * radius, 2)
+        dz = round(math.sin(angle) * radius, 2)
+        sy = y
+        sx = x + dx
+        sz = z + dz
+        execute(f'/summon minecraft:bee {sx} {sy} {sz} {{}}')
+    
+    # 視覚＆音の演出
+    execute('/playsound minecraft:entity.bee.ambient master @a')
+
+    sleep(5)
+
+    # プレイヤーの位置を取得
+    x, y, z = minescript.player_position()
+    
+    # アレイを出現させる数と半径
+    num_allays = 12       # アレイの数（例：24体）
+    radius = 1            # プレイヤーからの距離（円の半径）
+    
+    # 放射状にアレイを配置
+    for i in range(num_allays):
+        angle = 2 * math.pi * i / num_allays
+        dx = round(math.cos(angle) * radius, 2)
+        dz = round(math.sin(angle) * radius, 2)
+        sy = y 
+        sx = x + dx
+        sz = z + dz
+        execute(f'/summon minecraft:parrot {sx} {sy} {sz} {{}}')
+    
+    # 視覚＆音の演出
+    execute('/playsound minecraft:entity.parrot.ambient master @a')
+
+    sleep(5)
+
+    # プレイヤーの位置を取得
+    x, y, z = minescript.player_position()
+    
+    # アレイを出現させる数と半径
+    num_allays = 12       # アレイの数（例：24体）
+    radius = 1            # プレイヤーからの距離（円の半径）
+    
+    # 放射状にアレイを配置
+    for i in range(num_allays):
+        angle = 2 * math.pi * i / num_allays
+        dx = round(math.cos(angle) * radius, 2)
+        dz = round(math.sin(angle) * radius, 2)
+        sy = y 
+        sx = x + dx
+        sz = z + dz
+        variant = random.randint(0, 4)  # 0〜4のランダム
+        execute(f'/summon minecraft:parrot {sx} {sy} {sz} {{Variant:{variant}}}')
+    
+    # 視覚＆音の演出
+    execute('/playsound minecraft:entity.parrot.ambient master @a')
+
+    sleep(5)
+
+# elif arg1 == "mobs":
+#     # プレイヤーの位置を取得
+#     x, y, z = minescript.player_position()
+
+#     # アレイを出現させる数と半径
+#     num_allays = 24       # アレイの数（例：24体）
+#     radius = 5            # プレイヤーからの距離（円の半径）
+    
+#     if arg2 == "circle":
+#         # 放射状にアレイを配置（円形）
+#         for i in range(num_allays):
+#             angle = 2 * math.pi * i / num_allays
+#             dx = round(math.cos(angle) * radius, 2)
+#             dz = round(math.sin(angle) * radius, 2)
+#             sx = x + dx
+#             sz = z + dz
+#             execute(f'/summon minecraft:allay {sx} {y} {sz} {{}}')
+
+#         # 視覚＆音の演出
+#         execute('/playsound minecraft:entity.allay.ambient_with_item master @a')
+
+#         echo("円形にアレイを召喚しました！")
+    
+#     elif arg2 == "heart":
+#         # ハート型にアレイを配置
+#         for i in range(num_allays):
+#             angle = 2 * math.pi * i / num_allays
+#             # ハート型の方程式に基づいて位置を計算
+#             dx = round(16 * math.sin(angle)**3, 2)
+#             dz = round(13 * math.cos(angle) - 5 * math.cos(2*angle) - 2 * math.cos(3*angle) - math.cos(4*angle), 2)
+#             sx = x + dx
+#             sz = z + dz
+#             execute(f'/summon minecraft:allay {sx} {y} {sz} {{}}')
+
+#         # 視覚＆音の演出
+#         execute('/playsound minecraft:entity.allay.ambient_with_item master @a')
+
+#         echo("ハート型にアレイを召喚しました！")
 
 # ------------------------------------------------------------
 # 整地
@@ -161,8 +276,11 @@ elif arg1 == "flatten":
     elif arg2 == "3":
         block_type = "gold_block"
     else:
-        block_type = "grass_block"  # デフォルト fallback
-
+#        block_type = "grass_block"
+        block_type = "quartz_block"
+#        block_type = "gold_block"
+#        block_type = "glowstone"
+    
     x, y, z = map(int, minescript.player_position())
 
     width = 20
@@ -193,7 +311,8 @@ elif arg1 == "tower":
     elif arg2 == "2":
         block_type = "quartz_block"
     elif arg2 == "3":
-        block_type = "grass_block"
+#        block_type = "grass_block"
+        block_type = "glass"
     elif arg2 == "reset":
         block_type = None
     else:
@@ -384,33 +503,43 @@ elif arg1 == "scale":
 # 装備
 # ------------------------------------------------------------
 elif arg1 == "armor":
-    execute('/item replace entity @p weapon.mainhand with minecraft:diamond_sword')
-    execute('/item replace entity @p armor.head with minecraft:diamond_helmet')
-    execute('/item replace entity @p armor.chest with minecraft:diamond_chestplate')
-    execute('/item replace entity @p armor.legs with minecraft:diamond_leggings')
-    execute('/item replace entity @p armor.feet with minecraft:diamond_boots')
+    if arg2 == "diamond":
+        # ダイヤモンド装備
+        execute('/item replace entity @p weapon.mainhand with minecraft:diamond_sword')
+        execute('/item replace entity @p armor.head with minecraft:diamond_helmet')
+        execute('/item replace entity @p armor.chest with minecraft:diamond_chestplate')
+        execute('/item replace entity @p armor.legs with minecraft:diamond_leggings')
+        execute('/item replace entity @p armor.feet with minecraft:diamond_boots')
 
-    echo("ダイヤモンド装備を装着しました！")
+        echo("ダイヤモンド装備を装着しました！")
+    
+    elif arg2 == "nether":
+        # ネザー装備
+        execute('/item replace entity @p weapon.mainhand with minecraft:netherite_sword')
+        execute('/item replace entity @p armor.head with minecraft:netherite_helmet')
+        execute('/item replace entity @p armor.chest with minecraft:netherite_chestplate')
+        execute('/item replace entity @p armor.legs with minecraft:netherite_leggings')
+        execute('/item replace entity @p armor.feet with minecraft:netherite_boots')
 
-# ------------------------------------------------------------
-# ランダムな装備
-# ------------------------------------------------------------
-elif arg1 == "randomarmor":
-    weapons = ["diamond_sword", "netherite_sword", "iron_axe", "bow", "crossbow"]
-    helmets = ["diamond_helmet", "netherite_helmet", "iron_helmet", "golden_helmet", "leather_helmet"]
-    chestplates = ["diamond_chestplate", "netherite_chestplate", "iron_chestplate", "golden_chestplate", "leather_chestplate"]
-    leggings = ["diamond_leggings", "netherite_leggings", "iron_leggings", "golden_leggings", "leather_leggings"]
-    boots = ["diamond_boots", "netherite_boots", "iron_boots", "golden_boots", "leather_boots"]
-    shields = ["shield", "totem_of_undying", "bow", "torch", "ender_pearl"]
+        echo("ネザー装備を装着しました！")
+    
+    elif arg2 == "random":
+        # ランダムな装備
+        weapons = ["diamond_sword", "netherite_sword", "iron_axe", "bow", "crossbow"]
+        helmets = ["diamond_helmet", "netherite_helmet", "iron_helmet", "golden_helmet", "leather_helmet"]
+        chestplates = ["diamond_chestplate", "netherite_chestplate", "iron_chestplate", "golden_chestplate", "leather_chestplate"]
+        leggings = ["diamond_leggings", "netherite_leggings", "iron_leggings", "golden_leggings", "leather_leggings"]
+        boots = ["diamond_boots", "netherite_boots", "iron_boots", "golden_boots", "leather_boots"]
+        shields = ["shield", "totem_of_undying", "bow", "torch", "ender_pearl"]
 
-    execute(f'/item replace entity @p weapon.mainhand with minecraft:{random.choice(weapons)}')
-    execute(f'/item replace entity @p armor.head with minecraft:{random.choice(helmets)}')
-    execute(f'/item replace entity @p armor.chest with minecraft:{random.choice(chestplates)}')
-    execute(f'/item replace entity @p armor.legs with minecraft:{random.choice(leggings)}')
-    execute(f'/item replace entity @p armor.feet with minecraft:{random.choice(boots)}')
-    execute(f'/item replace entity @p weapon.offhand with minecraft:{random.choice(shields)}')
+        execute(f'/item replace entity @p weapon.mainhand with minecraft:{random.choice(weapons)}')
+        execute(f'/item replace entity @p armor.head with minecraft:{random.choice(helmets)}')
+        execute(f'/item replace entity @p armor.chest with minecraft:{random.choice(chestplates)}')
+        execute(f'/item replace entity @p armor.legs with minecraft:{random.choice(leggings)}')
+        execute(f'/item replace entity @p armor.feet with minecraft:{random.choice(boots)}')
+        execute(f'/item replace entity @p weapon.offhand with minecraft:{random.choice(shields)}')
 
-    echo("ランダムな装備を装着しました！")
+        echo("ランダムな装備を装着しました！")
 
 # ------------------------------------------------------------
 # 馬
@@ -426,7 +555,7 @@ elif arg1 == "horse":
 
     # 通常の馬を召喚（手懐け済み＆サドル装備済み）
     horse_nbt = (
-        '{Tame:1b, Saddled:1b}, '
+        '{Tame:1b, Saddled:1b, '
         'PersistenceRequired:1b, NoAI:1b}'  
     )
     execute(f'/summon horse {x + 1} {y} {z} {horse_nbt}')
@@ -436,7 +565,7 @@ elif arg1 == "horse":
     execute('/give @p minecraft:diamond_horse_armor')
     echo("💎 ダイヤの馬鎧をプレゼント！")
 
-# elif arg1 == "aromorhorse":
+# elif arg1 == "armorhorse":
 #     x, y, z = map(int, minescript.player_position())
 
 #     # サドル＋ダイヤ馬鎧＋手懐け済み＋動かない馬を召喚
@@ -541,6 +670,55 @@ elif arg1 == "ss":
 
     minescript.screenshot(filename)
     echo(f"📸 スクリーンショットを {filename} に保存しました！")
+
+# ------------------------------------------------------------
+# 空中散歩
+# ------------------------------------------------------------
+elif arg1 == "skywalk":
+    x, y, z = map(int, minescript.player_position())
+
+    # アレイを浮かせて召喚（NoAI: 動かず、Silent: 音なし、Invulnerable: 壊れない）
+    # execute(f'/summon minecraft:allay {x} {y+1} {z} {{NoAI:1b,Silent:1b,Invulnerable:1b}}')
+    # アレイを浮かせて召喚（Invulnerable: 壊れない、Glowing: 光彩）
+    execute(f'/summon minecraft:allay {x} {y+1} {z} {{Invulnerable:1b,Glowing:1b}}')
+
+    # プレイヤーをそのアレイにライド
+    execute('/ride @p mount @e[type=allay,limit=1,sort=nearest,distance=..3]')
+
+    echo("アレイに乗って優雅に空中散歩へ…！")
+
+# elif arg1 == "skywalk":
+#     x, y, z = map(int, minescript.player_position())
+
+    # # アイアンゴーレムを上に召喚してプレイヤーに乗せる
+    # execute(f'/summon minecraft:iron_golem {x} {y} {z} {{Invulnerable:1b}}')
+    # execute('/execute as @e[type=minecraft:iron_golem,limit=1,sort=nearest,distance=..5] at @s run attribute @s minecraft:scale base set 5')
+    # execute('/ride @p mount @e[type=iron_golem,limit=1,sort=nearest,distance=..5]')
+
+    # execute(f'/summon minecraft:bee {x} {y} {z} {{Invulnerable:1b}}')
+    # execute('/execute as @e[type=minecraft:bee,limit=1,sort=nearest,distance=..5] at @s run attribute @s minecraft:scale base set 10')
+    # execute('/ride @p mount @e[type=bee,limit=1,sort=nearest,distance=..5]')
+
+    # # 昼夜サイクルを止める（時間を固定して夜にしておく）
+    # execute('/gamerule doDaylightCycle false')
+    # execute('/time set night')
+    # execute('/effect give @p minecraft:resistance 255 255 true')
+    # execute('/effect give @p minecraft:slow_falling 255 255 true')
+    # # プレイヤーにダメージ無効効果をつける
+    # execute('/effect give @p minecraft:resistance 255 255 true')
+    # # ファントムを召喚
+    # # execute(f'/summon minecraft:phantom {x} {y+3} {z} {{NoAI:0b,Silent:1b,Invulnerable:1b}}')
+    # # ファントムを召喚（無敵＆燃え無視＆動く）
+    # execute(f'/summon minecraft:phantom {x} {y+3} {z} {{NoAI:0b,Silent:1b,Invulnerable:1b,Glowing:1b}}')
+    # execute('/execute as @e[type=minecraft:phantom,limit=1,sort=nearest,distance=..5] at @s run attribute @s minecraft:scale base set 5')
+    # # プレイヤーがファントムに乗る
+    # execute('/ride @p mount @e[type=phantom,limit=1,sort=nearest,distance=..5]')
+
+
+    # execute(f'/summon minecraft:enderman {x} {y} {z} {{Invulnerable:1b}}')
+    # execute('/execute as @e[type=minecraft:enderman,limit=1,sort=nearest,distance=..5] at @s run attribute @s minecraft:scale base set 10')
+    # execute('/ride @p mount @e[type=minecraft:enderman,limit=1,sort=nearest,distance=..5]')
+
 
 # ------------------------------------------------------------
 # 未対応
