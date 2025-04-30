@@ -102,3 +102,20 @@
 | 金の延べ棒 | `minecraft:gold_block` | 金インゴットを9つクラフトして作る。 |
 | ネザーライトの延べ棒 | `minecraft:netherite_block` | ネザーライトインゴットを9つクラフトして作成する。 |
 | 彫刻石 | `minecraft:chiseled_stone_bricks` | 石を加工して得られるブロック。 |
+
+### 11. **鍛冶型の装飾（Smithing Templates）**
+
+| 和名 | 英語名 | コマンドID | 特徴・入手方法 |
+|---|---|---|---|
+| 哨兵 | Sentry | `minecraft:sentry_armor_trim_smithing_template` | ピリジャーの前哨基地でチェストから見つかる。 |
+| 監視者 | Watcher | `minecraft:watcher_armor_trim_smithing_template` | 古代都市（ディープダーク）で見つかる。 |
+| 荒れ地 | Dune | `minecraft:dune_armor_trim_smithing_template` | 砂漠の寺院（ピラミッド）でチェストにある。 |
+| 海辺 | Coast | `minecraft:coast_armor_trim_smithing_template` | 難破船のチェストから発見される。 |
+| 丘陵 | Tide | `minecraft:tide_armor_trim_smithing_template` | 海底神殿のチェストで発見可能。 |
+| 大渓谷 | Raiser | `minecraft:raiser_armor_trim_smithing_template` | ネザー要塞のチェストで入手。 |
+| 書庫 | Wayfinder | `minecraft:wayfinder_armor_trim_smithing_template` | 森の洋館で発見できる。 |
+| 野営地 | Shaper | `minecraft:shaper_armor_trim_smithing_template` | 製図家の村（村人のチェスト）にて入手可能。 |
+| 砦 | Silence | `minecraft:silence_armor_trim_smithing_template` | 古代都市のチェストで非常にレア。 |
+| 終焉 | Spire | `minecraft:spire_armor_trim_smithing_template` | エンドシティのチェストにて入手。 |
+| 裏地 | Vex | `minecraft:vex_armor_trim_smithing_template` | 森の洋館（エヴォーカーがいる）にて見つかる。 |
+| フロー | Flow | `minecraft:flow_armor_trim_smithing_template` | 新バージョンで追加。入手場所は調査中。 |
