@@ -8,12 +8,15 @@
 | パンダ | Panda | `minecraft:panda` | パンダの模様はランダムで決まる。`/summon minecraft:panda ~ ~ ~ {MainGene:0,HiddenGene:0}`で遺伝子を指定。 |
 | ロバ | Donkey | `minecraft:donkey` | ロバにもいくつかの色のバリエーション（灰色、白など）がある。 |
 
+- ニワトリ
+- 牛
+- 豚
+
 ## 向き
 
 | ブロック名 | コマンドID | 設置向きのオプション（書き方例） | 説明 |
 |---|---|---|---|
 | オークのドア | `minecraft:oak_door` | `/setblock ~ ~ ~ minecraft:oak_door[facing=north]` | ドアを北向きに設置。 |
-
 
 ## 🎯 ドロッパー（Dropper）の向き
 
