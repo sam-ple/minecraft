@@ -29,7 +29,7 @@ if arg1 == "return":
 # ------------------------------------------------------------
 # 空中散歩
 # ------------------------------------------------------------
-elif arg1 == "skywalk":
+elif arg1 == "stroll":
     x, y, z = map(int, minescript.player_position())
 
     # アレイを浮かせて召喚（NoAI: 動かず、Silent: 音なし、Invulnerable: 壊れない）
