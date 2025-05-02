@@ -14,16 +14,19 @@ import minescript
 from minescript import execute, echo
 
 # -------------------------
-# 引数
+# 引数チェック
 # -------------------------
-arg1 = argv[1] if len(argv) > 1 else (echo("コマンドを指定してください。") or exit(1))
+if len(argv) <= 1:
+    echo("コマンドを指定してください。")
+    exit(1)
+
+arg1 = argv[1]
 arg2 = argv[2] if len(argv) > 2 else None
 
 # -------------------------
-# 共通関数
+# モブ召喚関数
 # -------------------------
-
-def summon_circle(entity, sound, count=12, radius=1, variant=False):
+def summon_circle(entity, sound=None, count=12, radius=1):
     x, y, z = minescript.player_position()
 
     for i in range(count):
@@ -34,41 +37,23 @@ def summon_circle(entity, sound, count=12, radius=1, variant=False):
         sy = y
         sz = z + dz
 
-        if variant:
-            v = random.randint(0, 4)
-            execute(f'/summon {entity} {sx} {sy} {sz} {{Variant:{v}}}')
-        else:
-            execute(f'/summon {entity} {sx} {sy} {sz} {{}}')
+        execute(f'/summon {entity} {sx} {sy} {sz} {{}}')
 
-    # 音と花火
-    execute(f'/playsound {sound} master @a')
-    summon_fireworks(x, y, z)
+    if sound:
+        execute(f"playsound {sound} master @a ~ ~ ~ 1 1 1")
+
     sleep(5)
 
-def summon_fireworks(x, y, z, count=5):
-    for _ in range(count):
-        fx = x + random.uniform(-2, 2)
-        fz = z + random.uniform(-2, 2)
-        fy = y + 1
-        execute(f'/summon minecraft:firework_rocket {fx} {fy} {fz} {{}}')
-
 # ------------------------------------------------------------
-# 帰還
+# コマンド分岐
 # ------------------------------------------------------------
 if arg1 == "return":
     execute(f"/tp @p -12 64 -136")
 
-# ------------------------------------------------------------
-# モブ召喚
-# ------------------------------------------------------------
 elif arg1 == "mobs":
     summon_circle("minecraft:allay", "minecraft:entity.allay.ambient_with_item")
     summon_circle("minecraft:bee", "minecraft:entity.bee.ambient")
     summon_circle("minecraft:parrot", "minecraft:entity.parrot.ambient")
-    summon_circle("minecraft:parrot", "minecraft:entity.parrot.ambient", variant=True)
 
-# ------------------------------------------------------------
-# 未対応
-# ------------------------------------------------------------
 else:
     echo(f"未対応のコマンドです: {arg1}")
