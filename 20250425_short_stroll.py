@@ -27,20 +27,33 @@ if arg1 == "return":
     execute(f"/tp @p -12 64 -136")
   
 # ------------------------------------------------------------
-# 空中散歩
+# 散歩
 # ------------------------------------------------------------
 elif arg1 == "stroll":
     x, y, z = map(int, minescript.player_position())
 
-    # アレイを浮かせて召喚（NoAI: 動かず、Silent: 音なし、Invulnerable: 壊れない）
-    # execute(f'/summon minecraft:allay {x} {y+1} {z} {{NoAI:1b,Silent:1b,Invulnerable:1b}}')
-    # アレイを浮かせて召喚（Invulnerable: 壊れない、Glowing: 光彩）
-    execute(f'/summon minecraft:allay {x} {y+1} {z} {{Invulnerable:1b,Glowing:1b}}')
+    if arg2 == "allay":
+        # アレイ召喚（そのままのサイズ）
+        execute(f'/summon minecraft:allay {x} {y+1} {z} {{Invulnerable:1b,Glowing:1b}}')
+        # プレイヤーを0.5に縮小
+        execute('/attribute @p minecraft:generic.scale base set 0.5')
+        # ライド
+        execute('/ride @p mount @e[type=allay,limit=1,sort=nearest,distance=..3]')
+        echo("ちっちゃくなってアレイに乗って空中散歩へ…！")
 
-    # プレイヤーをそのアレイにライド
-    execute('/ride @p mount @e[type=allay,limit=1,sort=nearest,distance=..3]')
+    elif arg2 == "enderman":
+        # エンダーマン召喚
+        execute(f'/summon minecraft:enderman {x} {y+1} {z} {{Invulnerable:1b,Glowing:1b}}')
+        # エンダーマンを巨大化（scale 10）
+        execute('/execute as @e[type=enderman,limit=1,sort=nearest,distance=..5] run attribute @s minecraft:generic.scale base set 10')
+        # プレイヤーのサイズを元に戻す
+        execute('/attribute @p minecraft:generic.scale base set 1')
+        # ライド
+        execute('/ride @p mount @e[type=enderman,limit=1,sort=nearest,distance=..5]')
+        echo("巨大なエンダーマンに乗って異世界の旅へ…！")
 
-    echo("アレイに乗って優雅に空中散歩へ…！")
+    else:
+        echo("未対応のサブコマンドです。'allay' または 'enderman' を指定してください。")
 
 # ------------------------------------------------------------
 # 未対応
