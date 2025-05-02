@@ -106,11 +106,6 @@ elif arg1 == "phase":
 # ------------------------------------------------------------
 # ミュージック
 # ------------------------------------------------------------
-# execute('/playsound minecraft:music.overworld.jaguar record @p ~ ~ ~ 1')
-# execute('/playsound minecraft:music.creative record @p ~ ~ ~ 1')
-# execute('/playsound minecraft:music.game record @p ~ ~ ~ 1')
-# execute('/playsound minecraft:music.menu record @p ~ ~ ~ 1')
-# execute('/playsound minecraft:music_disc.cat record @p ~ ~ ~ 1')
 elif arg1 == "music":
     if arg2 == "1":
         # Meadow BGM
@@ -156,114 +151,6 @@ elif arg1 == "mobs":
     # 視覚＆音の演出
     execute('/playsound minecraft:entity.allay.ambient_with_item master @a')
 
-    sleep(5)
-
-    # プレイヤーの位置を取得
-    x, y, z = minescript.player_position()
-    
-    # アレイを出現させる数と半径
-    num_allays = 12       # アレイの数（例：24体）
-    radius = 1            # プレイヤーからの距離（円の半径）
-    
-    # 放射状にアレイを配置
-    for i in range(num_allays):
-        angle = 2 * math.pi * i / num_allays
-        dx = round(math.cos(angle) * radius, 2)
-        dz = round(math.sin(angle) * radius, 2)
-        sy = y
-        sx = x + dx
-        sz = z + dz
-        execute(f'/summon minecraft:bee {sx} {sy} {sz} {{}}')
-    
-    # 視覚＆音の演出
-    execute('/playsound minecraft:entity.bee.ambient master @a')
-
-    sleep(5)
-
-    # プレイヤーの位置を取得
-    x, y, z = minescript.player_position()
-    
-    # アレイを出現させる数と半径
-    num_allays = 12       # アレイの数（例：24体）
-    radius = 1            # プレイヤーからの距離（円の半径）
-    
-    # 放射状にアレイを配置
-    for i in range(num_allays):
-        angle = 2 * math.pi * i / num_allays
-        dx = round(math.cos(angle) * radius, 2)
-        dz = round(math.sin(angle) * radius, 2)
-        sy = y 
-        sx = x + dx
-        sz = z + dz
-        execute(f'/summon minecraft:parrot {sx} {sy} {sz} {{}}')
-    
-    # 視覚＆音の演出
-    execute('/playsound minecraft:entity.parrot.ambient master @a')
-
-    sleep(5)
-
-    # プレイヤーの位置を取得
-    x, y, z = minescript.player_position()
-    
-    # アレイを出現させる数と半径
-    num_allays = 12       # アレイの数（例：24体）
-    radius = 1            # プレイヤーからの距離（円の半径）
-    
-    # 放射状にアレイを配置
-    for i in range(num_allays):
-        angle = 2 * math.pi * i / num_allays
-        dx = round(math.cos(angle) * radius, 2)
-        dz = round(math.sin(angle) * radius, 2)
-        sy = y 
-        sx = x + dx
-        sz = z + dz
-        variant = random.randint(0, 4)  # 0〜4のランダム
-        execute(f'/summon minecraft:parrot {sx} {sy} {sz} {{Variant:{variant}}}')
-    
-    # 視覚＆音の演出
-    execute('/playsound minecraft:entity.parrot.ambient master @a')
-
-    sleep(5)
-
-# elif arg1 == "mobs":
-#     # プレイヤーの位置を取得
-#     x, y, z = minescript.player_position()
-
-#     # アレイを出現させる数と半径
-#     num_allays = 24       # アレイの数（例：24体）
-#     radius = 5            # プレイヤーからの距離（円の半径）
-    
-#     if arg2 == "circle":
-#         # 放射状にアレイを配置（円形）
-#         for i in range(num_allays):
-#             angle = 2 * math.pi * i / num_allays
-#             dx = round(math.cos(angle) * radius, 2)
-#             dz = round(math.sin(angle) * radius, 2)
-#             sx = x + dx
-#             sz = z + dz
-#             execute(f'/summon minecraft:allay {sx} {y} {sz} {{}}')
-
-#         # 視覚＆音の演出
-#         execute('/playsound minecraft:entity.allay.ambient_with_item master @a')
-
-#         echo("円形にアレイを召喚しました！")
-    
-#     elif arg2 == "heart":
-#         # ハート型にアレイを配置
-#         for i in range(num_allays):
-#             angle = 2 * math.pi * i / num_allays
-#             # ハート型の方程式に基づいて位置を計算
-#             dx = round(16 * math.sin(angle)**3, 2)
-#             dz = round(13 * math.cos(angle) - 5 * math.cos(2*angle) - 2 * math.cos(3*angle) - math.cos(4*angle), 2)
-#             sx = x + dx
-#             sz = z + dz
-#             execute(f'/summon minecraft:allay {sx} {y} {sz} {{}}')
-
-#         # 視覚＆音の演出
-#         execute('/playsound minecraft:entity.allay.ambient_with_item master @a')
-
-#         echo("ハート型にアレイを召喚しました！")
-
 # ------------------------------------------------------------
 # 整地
 # ------------------------------------------------------------
@@ -276,11 +163,8 @@ elif arg1 == "flatten":
     elif arg2 == "3":
         block_type = "gold_block"
     else:
-#        block_type = "grass_block"
-        block_type = "quartz_block"
-#        block_type = "gold_block"
-#        block_type = "glowstone"
-    
+        block_type = "grass_block"
+
     x, y, z = map(int, minescript.player_position())
 
     width = 20
@@ -311,7 +195,6 @@ elif arg1 == "tower":
     elif arg2 == "2":
         block_type = "quartz_block"
     elif arg2 == "3":
-#        block_type = "grass_block"
         block_type = "glass"
     elif arg2 == "reset":
         block_type = None
@@ -565,18 +448,6 @@ elif arg1 == "horse":
     execute('/give @p minecraft:diamond_horse_armor')
     echo("💎 ダイヤの馬鎧をプレゼント！")
 
-# elif arg1 == "armorhorse":
-#     x, y, z = map(int, minescript.player_position())
-
-#     # サドル＋ダイヤ馬鎧＋手懐け済み＋動かない馬を召喚
-#     horse_nbt = (
-#         '{Tame:1b, Saddled:1b, '
-#         'ArmorItems:[{Slot:2b,id:"minecraft:diamond_horse_armor",Count:1b}], '
-#         'PersistenceRequired:1b, NoAI:1b}'
-#     )
-#     execute(f'/summon horse {x + 1} {y} {z} {horse_nbt}')
-#     echo("🐎✨ ダイヤ馬鎧＆サドル付きの動かない馬を召喚！")
-
 # ------------------------------------------------------------
 # 鍛冶型装備
 # ------------------------------------------------------------
@@ -605,24 +476,6 @@ elif arg1 == "smithkit":
     # 説明
     echo("🛠 鍛冶台と装飾用アイテムをプレゼント！")
 
-# 哨兵（Sentry）	minecraft:sentry
-# 監視者（Watcher）	minecraft:watcher
-# 荒れ地（Dune）	minecraft:dune
-# 海辺（Coast）	minecraft:coast
-# 丘陵（Tide）	minecraft:tide
-# 大渓谷（Raiser）	minecraft:raiser
-# 書庫（Wayfinder）	minecraft:wayfinder
-# 野営地（Shaper）	minecraft:shaper
-# 砦（Silence）	minecraft:silence
-# 終焉（Spire）	minecraft:spire
-# 裏地（Vex）	minecraft:vex
-# フロー（Flow）	minecraft:flow
-# elif arg1 == "smitharmor":
-#     # 装飾付きネザライトヘルメット
-#     nbt = '{Trim:{material:"minecraft:diamond",pattern:"minecraft:sentry"}}'
-#     execute(f'/give @p minecraft:netherite_helmet{nbt} 1')
-#     echo("✨装飾付きのネザライトヘルメットを付与！")
-
 # ------------------------------------------------------------
 # 最強の釣り竿
 # ------------------------------------------------------------
@@ -642,20 +495,6 @@ elif arg1 == "fishrod":
         execute(f"/enchant @p {ench}")
     
     echo("🎣 最強の釣り竿を渡しました！")
-
-# elif arg1 == "fishrod":
-#     # 最強の釣り竿を付与（宝釣りIII・入れ食いIII・耐久III・修繕I）
-#     rod_command = (
-#         '/give @p minecraft:fishing_rod{'
-#         'Enchantments:['
-#         '{"id":"minecraft:luck_of_the_sea","lvl":3},'
-#         '{"id":"minecraft:lure","lvl":3},'
-#         '{"id":"minecraft:unbreaking","lvl":3},'
-#         '{"id":"minecraft:mending","lvl":1}'
-#         ']} 1'
-#     )
-#     execute(rod_command)
-#     echo("🎣 最強の釣り竿を手に入れた！")
 
 # ------------------------------------------------------------
 # スクリーンショット
@@ -686,39 +525,6 @@ elif arg1 == "skywalk":
     execute('/ride @p mount @e[type=allay,limit=1,sort=nearest,distance=..3]')
 
     echo("アレイに乗って優雅に空中散歩へ…！")
-
-# elif arg1 == "skywalk":
-#     x, y, z = map(int, minescript.player_position())
-
-    # # アイアンゴーレムを上に召喚してプレイヤーに乗せる
-    # execute(f'/summon minecraft:iron_golem {x} {y} {z} {{Invulnerable:1b}}')
-    # execute('/execute as @e[type=minecraft:iron_golem,limit=1,sort=nearest,distance=..5] at @s run attribute @s minecraft:scale base set 5')
-    # execute('/ride @p mount @e[type=iron_golem,limit=1,sort=nearest,distance=..5]')
-
-    # execute(f'/summon minecraft:bee {x} {y} {z} {{Invulnerable:1b}}')
-    # execute('/execute as @e[type=minecraft:bee,limit=1,sort=nearest,distance=..5] at @s run attribute @s minecraft:scale base set 10')
-    # execute('/ride @p mount @e[type=bee,limit=1,sort=nearest,distance=..5]')
-
-    # # 昼夜サイクルを止める（時間を固定して夜にしておく）
-    # execute('/gamerule doDaylightCycle false')
-    # execute('/time set night')
-    # execute('/effect give @p minecraft:resistance 255 255 true')
-    # execute('/effect give @p minecraft:slow_falling 255 255 true')
-    # # プレイヤーにダメージ無効効果をつける
-    # execute('/effect give @p minecraft:resistance 255 255 true')
-    # # ファントムを召喚
-    # # execute(f'/summon minecraft:phantom {x} {y+3} {z} {{NoAI:0b,Silent:1b,Invulnerable:1b}}')
-    # # ファントムを召喚（無敵＆燃え無視＆動く）
-    # execute(f'/summon minecraft:phantom {x} {y+3} {z} {{NoAI:0b,Silent:1b,Invulnerable:1b,Glowing:1b}}')
-    # execute('/execute as @e[type=minecraft:phantom,limit=1,sort=nearest,distance=..5] at @s run attribute @s minecraft:scale base set 5')
-    # # プレイヤーがファントムに乗る
-    # execute('/ride @p mount @e[type=phantom,limit=1,sort=nearest,distance=..5]')
-
-
-    # execute(f'/summon minecraft:enderman {x} {y} {z} {{Invulnerable:1b}}')
-    # execute('/execute as @e[type=minecraft:enderman,limit=1,sort=nearest,distance=..5] at @s run attribute @s minecraft:scale base set 10')
-    # execute('/ride @p mount @e[type=minecraft:enderman,limit=1,sort=nearest,distance=..5]')
-
 
 # ------------------------------------------------------------
 # 未対応
