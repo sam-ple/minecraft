@@ -2,14 +2,14 @@ import time
 import minescript
 from minescript import execute
 
-execute("/playsound minecraft:music.credits record @p")
+# execute("/playsound minecraft:music.credits record @p")
 
 # プレイヤーの現在位置を取得し整列
 x, y, z = map(int, minescript.player_position())
 # execute(f"/tp @p {x} {y} {z} 180 0")
 
 # 基準位置にガラスとテレポート
-base_y = 5
+base_y = 10
 base_z = 5
 execute(f"/setblock {x} {y+base_y} {z+base_z} minecraft:glass")
 execute(f"/tp @p {x} {y+base_y+1} {z+base_z} 180 0")
@@ -69,6 +69,39 @@ skeleton_colors = [
     [7, 7, 7, 7, 7, 7, 7, 7]
 ]
 
+sheep_colors = [
+    [8, 8, 8, 8, 8, 8, 8, 8],
+    [8, 0, 0, 0, 0, 0, 0, 8],
+    [8, 12, 12, 12, 12, 12, 12, 8],
+    [8, 15, 0, 12, 12, 0, 15, 8],
+    [8, 12, 12, 12, 12, 12, 12, 8],
+    [8, 0, 12, 6, 6, 12, 0, 8],
+    [8, 0, 12, 6, 6, 12, 0, 8],
+    [8, 8, 8, 8, 8, 8, 8, 8]
+]
+
+mooshroom_colors = [
+    [14, 14, 14, 8, 8, 7, 7, 14],
+    [14, 14, 14, 8, 8, 8, 14, 14],
+    [15, 15, 14, 8, 8, 14, 15, 15],
+    [15, 15, 14, 8, 14, 14, 15, 15],
+    [14, 14, 14, 14, 14, 14, 14, 14],
+    [14, 12, 0, 0, 0, 0, 12, 14],
+    [14, 0, 15, 7, 7 ,15, 0, 14],
+    [14, 0, 14, 7, 7, 14, 0, 14]
+]
+
+fox_colors = [
+    [8, 8, 0, 0, 0, 0, 8, 8],
+    [8, 7, 0, 0, 0, 0, 7, 8],
+    [12, 12, 12, 12, 12, 12, 12, 12],
+    [12, 12, 12, 12, 12, 12, 12, 12],
+    [12, 12, 12, 12, 12, 12, 12, 12],
+    [15, 0, 12, 12, 12, 12, 0, 15],
+    [12, 12, 8, 15, 15, 8, 12, 12],
+    [8, 8, 0, 0, 0, 0, 8, 8]
+]
+
 # 配置関数
 def draw_art(start_x, start_y, start_z, art):
     for dy, row in enumerate(art):
@@ -90,5 +123,11 @@ time.sleep(1)
 draw_art(x, y + 10, z, zombie_colors)
 time.sleep(1)
 draw_art(x, y + 10, z, skeleton_colors)
+time.sleep(1)
+draw_art(x, y + 10, z, sheep_colors)
+time.sleep(1)
+draw_art(x, y + 10, z, mooshroom_colors)
+time.sleep(1)
+draw_art(x, y + 10, z, fox_colors)
 time.sleep(1)
 
