@@ -12,33 +12,77 @@ base_z = 5
 execute(f"/setblock {x} {y+base_y} {z+base_z} minecraft:glass")
 execute(f"/tp @p {x} {y+base_y+1} {z+base_z} 0 -90")
 
-# 簡易 setblock ヘルパー
-def setblock(x, y, z, block):
-    execute(f"/setblock {x} {y} {z} minecraft:{block}")
+# ブロック定義マップ
+block_map = {
+    "O": "oak_log",
+    "C": "cobblestone",
+    "P": "oak_planks",
+    "G": "glass",
+    "S": "oak_stairs",
+    "D": "oak_door",
+    "T": "wall_torch",
+    " ": None  # 空白はブロックなし
+}
 
-# 7x7エリアにブロックを設置する関数
-def fill_plane(y, z_range, x_range, block_map):
-    for dz, bz in enumerate(range(*z_range)):
-        for dx, bx in enumerate(range(*x_range)):
-            block = block_map[dz][dx]
-            setblock(bx, y, bz, block)
-
-# --- 地面（丸石で埋める） ---
-block_map_ground = [["cobblestone"] * 7 for _ in range(7)]
-fill_plane(y - 1, (z - 3, z + 4), (x - 3, x + 4), block_map_ground)
-
-time.sleep(2)
-
-# --- 1段上（建物の床や壁） ---
-block_map_layer1 = [
-    ["air", "air",       "air",       "air",       "air",       "air",       "air"],
-    ["air", "oak_log",   "cobblestone", "cobblestone", "cobblestone", "oak_log",   "air"],
-    ["air", "cobblestone", "oak_planks", "oak_planks", "oak_planks", "cobblestone", "air"],
-    ["air", "cobblestone", "oak_planks", "oak_planks", "oak_planks", "cobblestone", "air"],
-    ["air", "cobblestone", "oak_planks", "oak_planks", "oak_planks", "cobblestone", "air"],
-    ["air", "oak_log",   "cobblestone", "cobblestone", "cobblestone", "oak_log",   "air"],
-    ["air", "air",       "air",       "oak_stairs", "air",       "air",       "air"],
+# 建物の各層の2Dレイアウト（上から順に5層）
+layers = [
+    [  # y + 0
+        " OOOOO ",
+        " OCCCO ",
+        " OCPCO ",
+        " OCCCO ",
+        " OCPCO ",
+        " OCCCO ",
+        " OOOOO "
+    ],
+    [  # y + 1
+        " OOOOO ",
+        " OGGGO ",
+        " OGPGO ",
+        " OGGGO ",
+        " OGPGO ",
+        " OGGGO ",
+        " OOOOO "
+    ],
+    [  # y + 2
+        " OOOOO ",
+        " OPDPO ",
+        " ODPDO ",
+        " DPPPD ",
+        " ODPDO ",
+        " OPDPO ",
+        " OOOOO "
+    ],
+    [  # y + 3
+        " OOOOO ",
+        " OPGPO ",
+        " OGGGO ",
+        " OPGPO ",
+        " OGGGO ",
+        " OPGPO ",
+        " OOOOO "
+    ],
+    [  # y + 4
+        " OOOOO ",
+        " OCCCO ",
+        " OCPCO ",
+        " OCCCO ",
+        " OCPCO ",
+        " OCCCO ",
+        " OOOOO "
+    ]
 ]
-fill_plane(y, (z - 3, z + 4), (x - 3, x + 4), block_map_layer1)
 
-time.sleep(2)
+# ブロック配置処理
+for dy, layer in enumerate(layers):
+    for dz, row in enumerate(layer):
+        for dx, char in enumerate(row):
+            block = block_map.get(char)
+            if block:
+                bx = x + dx - 3  # 中心揃え
+                by = y + dy
+                bz = z + dz - 3
+                execute(f"/setblock {bx} {by} {bz} minecraft:{block}")
+
+# トーチ設置（南向き）
+execute(f"/setblock {x} {y + 1} {z + 3} minecraft:wall_torch[facing=south]")
