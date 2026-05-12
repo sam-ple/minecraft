@@ -1,0 +1,23 @@
+---- Catch Summary ----
+ - minecraft:cod: 1356 times
+ - minecraft:salmon: 594 times
+ - minecraft:pufferfish: 277 times
+ - minecraft:tropical_fish: 45 times
+ - minecraft:bow: 12 times
+ - minecraft:potion: 7 times
+ - minecraft:name_tag: 40 times
+ - minecraft:leather: 11 times
+ - minecraft:lily_pad: 22 times
+ - minecraft:saddle: 11 times
+ - minecraft:enchanted_book: 12 times
+ - minecraft:nautilus_shell: 48 times
+ - minecraft:rotten_flesh: 13 times
+ - minecraft:ink_sac: 1 times
+ - minecraft:tripwire_hook: 8 times
+ - minecraft:stick: 9 times
+ - minecraft:string: 2 times
+ - minecraft:bowl: 15 times
+ - minecraft:leather_boots: 9 times
+ - minecraft:bone: 10 times
+ - minecraft:fishing_rod: 1 times
+Elapsed Time: 687:25

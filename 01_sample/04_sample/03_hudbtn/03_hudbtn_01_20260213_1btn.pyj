@@ -1,0 +1,128 @@
+#!python
+from system.pyj.minescript import *
+
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+ARGB = JavaClass("net.minecraft.util.ARGB")
+HudRenderCallback = JavaClass("net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback")
+
+mc = Minecraft.getInstance()
+
+BTN_W = 100
+BTN_H = 40
+
+COLOR_ON  = ARGB.color(220, 0, 200, 0)
+COLOR_OFF = ARGB.color(220, 200, 0, 0)
+COLOR_BORDER = ARGB.color(255, 255, 255, 255)
+TEXT_COLOR = ARGB.color(255, 255, 255, 255)
+CLICK_COLOR = ARGB.color(255, 255, 255, 255)
+
+button_on = False
+last_click = None
+
+
+# -----------------------------
+# ボタン位置（固定でテスト）
+# -----------------------------
+# def get_button_pos():
+#    return 270, 180
+def get_button_pos():
+    window = mc.getWindow()
+    gui_w = window.getGuiScaledWidth()
+    gui_h = window.getGuiScaledHeight()
+
+    return gui_w//2 - BTN_W//2, gui_h//2 - BTN_H//2
+
+
+# -----------------------------
+# 描画
+# -----------------------------
+def on_hud_render(guiGraphics, tickDelta):
+    x, y = get_button_pos()
+    color = COLOR_ON if button_on else COLOR_OFF
+
+    guiGraphics.fill(x, y, x + BTN_W, y + BTN_H, color)
+
+    # 枠線
+    guiGraphics.fill(x, y, x + BTN_W, y + 1, COLOR_BORDER)
+    guiGraphics.fill(x, y + BTN_H - 1, x + BTN_W, y + BTN_H, COLOR_BORDER)
+    guiGraphics.fill(x, y, x + 1, y + BTN_H, COLOR_BORDER)
+    guiGraphics.fill(x + BTN_W - 1, y, x + BTN_W, y + BTN_H, COLOR_BORDER)
+
+    # クリック可視化
+    if last_click:
+        cx, cy = last_click
+        size = 4
+        guiGraphics.fill(int(cx-size), int(cy-size),
+                         int(cx+size), int(cy+size),
+                         CLICK_COLOR)
+
+
+# -----------------------------
+# クリック完全デバッグ
+# -----------------------------
+def on_mouse_click(event):
+    global button_on, last_click
+
+    if event.action != 1:
+        return
+
+    window = mc.getWindow()
+
+    raw_w = window.getWidth()
+    raw_h = window.getHeight()
+    gui_w = window.getGuiScaledWidth()
+    gui_h = window.getGuiScaledHeight()
+
+    # RAW → GUI
+    mx = event.x * gui_w / raw_w
+    my = event.y * gui_h / raw_h
+
+    last_click = (mx, my)
+
+    x, y = get_button_pos()
+
+    # 各方向との距離
+    dist_left   = mx - x
+    dist_right  = (x + BTN_W) - mx
+    dist_top    = my - y
+    dist_bottom = (y + BTN_H) - my
+
+    # 条件個別チェック
+    cond_x1 = mx >= x
+    cond_x2 = mx < x + BTN_W
+    cond_y1 = my >= y
+    cond_y2 = my < y + BTN_H
+
+    hit = cond_x1 and cond_x2 and cond_y1 and cond_y2
+
+    echo("============== FULL DEBUG ==============")
+    echo(f"RAW MOUSE        : ({event.x:.2f}, {event.y:.2f})")
+    echo(f"CONVERTED GUI    : ({mx:.2f}, {my:.2f})")
+    echo(f"RAW SIZE         : ({raw_w}, {raw_h})")
+    echo(f"GUI SIZE         : ({gui_w}, {gui_h})")
+    echo("")
+    echo(f"BUTTON X RANGE   : {x} -> {x+BTN_W}")
+    echo(f"BUTTON Y RANGE   : {y} -> {y+BTN_H}")
+    echo("")
+    echo(f"DIST LEFT        : {dist_left:.2f}")
+    echo(f"DIST RIGHT       : {dist_right:.2f}")
+    echo(f"DIST TOP         : {dist_top:.2f}")
+    echo(f"DIST BOTTOM      : {dist_bottom:.2f}")
+    echo("")
+    echo(f"COND mx>=x       : {cond_x1}")
+    echo(f"COND mx<x+W      : {cond_x2}")
+    echo(f"COND my>=y       : {cond_y1}")
+    echo(f"COND my<y+H      : {cond_y2}")
+    echo("")
+    echo(f"FINAL HIT        : {hit}")
+    echo("========================================")
+
+    if hit:
+        button_on = not button_on
+
+
+# -----------------------------
+# 登録
+# -----------------------------
+add_event_listener("mouse", on_mouse_click)
+HudRenderCallback.EVENT.register(HudRenderCallback(on_hud_render))

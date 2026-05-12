@@ -1,0 +1,105 @@
+#!python
+from system.pyj.minescript import *
+
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+ARGB = JavaClass("net.minecraft.util.ARGB")
+HudRenderCallback = JavaClass("net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback")
+
+mc = Minecraft.getInstance()
+
+BTN_W = 150
+BTN_H = 20
+MARGIN = 20
+
+COLOR_NORMAL = ARGB.color(220, 0, 120, 255)
+COLOR_ACTIVE = ARGB.color(220, 255, 80, 80)
+TEXT_COLOR = ARGB.color(255, 255, 255, 255)
+
+buttons = {
+    "center": False,
+    "top_left": False,
+    "top_right": False,
+    "bottom_left": False,
+    "bottom_right": False
+}
+
+def get_positions():
+    window = mc.getWindow()
+    gui_w = window.getGuiScaledWidth()
+    gui_h = window.getGuiScaledHeight()
+
+    pos = {}
+
+    pos["center"] = (gui_w//2 - BTN_W//2, gui_h//2 - BTN_H//2)
+    pos["top_left"] = (MARGIN, MARGIN)
+    pos["top_right"] = (gui_w - BTN_W - MARGIN, MARGIN)
+    pos["bottom_left"] = (MARGIN, gui_h - BTN_H - MARGIN)
+    pos["bottom_right"] = (gui_w - BTN_W - MARGIN,
+                           gui_h - BTN_H - MARGIN)
+
+    return pos
+
+
+def on_hud_render(guiGraphics, tickDelta):
+
+    positions = get_positions()
+
+    for name in positions:
+        x = positions[name][0]
+        y = positions[name][1]
+
+        if buttons[name]:
+            color = COLOR_ACTIVE
+        else:
+            color = COLOR_NORMAL
+
+        guiGraphics.fill(x, y, x+BTN_W, y+BTN_H, color)
+
+        guiGraphics.drawString(
+            mc.font,
+            name,
+            x + 10,
+            y + BTN_H//2 - 4,
+            TEXT_COLOR
+        )
+
+
+def on_mouse_click(event):
+
+    if event.action != 1:
+        return
+
+    window = mc.getWindow()
+
+    raw_w = window.getWidth()
+    raw_h = window.getHeight()
+    gui_w = window.getGuiScaledWidth()
+    gui_h = window.getGuiScaledHeight()
+
+    mx = event.x * gui_w / raw_w
+    my = event.y * gui_h / raw_h
+
+    positions = get_positions()
+
+    hit = False   # ← 追加
+
+    for name in positions:
+        x = positions[name][0]
+        y = positions[name][1]
+
+        if (mx >= x and mx < x+BTN_W and
+            my >= y and my < y+BTN_H):
+
+            buttons[name] = not buttons[name]
+            echo(">>> " + name + " = " + str(buttons[name]))
+            hit = True
+            break
+
+    if not hit:
+        echo(">>> no button")
+
+
+add_event_listener("mouse", on_mouse_click)
+HudRenderCallback.EVENT.register(HudRenderCallback(on_hud_render))
+
+echo("5 BUTTON TOGGLE MODE STARTED (Pyjinn safe)")

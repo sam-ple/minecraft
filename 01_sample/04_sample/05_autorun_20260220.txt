@@ -1,0 +1,82 @@
+# =====================================
+# Minescript config.txt
+# Lines starting with "#" are ignored.
+# =====================================
+
+# -------------------------------------
+# Python Interpreter Path
+# -------------------------------------
+#
+# Windows (PowerShell):
+#   Run: where.exe python
+#
+# Windows (CMD):
+#   Run: where python
+#
+# macOS / Linux:
+#   Run: which python3
+#
+# Copy the full path shown and paste it below.
+
+python = "/opt/homebrew/bin/python3"
+
+
+# -------------------------------------
+# Autorun Settings
+# -------------------------------------
+# Format:
+#   autorun[WORLDNAME] = script_name
+#   autorun[WORLDNAME] = script_name arg1 arg2
+#
+# WORLDNAME:
+#   *                   → runs in all worlds
+#   Specific world name → runs only in that world
+#
+# script_name:
+#   File name without .py or .pyj
+#   Arguments can be added after the name
+#
+# If multiple autorun entries exist for the same world,
+# they will run in order (top to bottom).
+
+
+# =====================================
+# Test Configurations
+# =====================================
+
+
+# -------------------------------------
+# Global Autorun (All Worlds)
+# -------------------------------------
+# runs in every world
+# test.py → simple echo test
+autorun[*] = test
+
+
+# -------------------------------------
+# Single World: Test1
+# -------------------------------------
+# test1.py → simple echo test
+autorun[Test1] = test1
+
+
+# -------------------------------------
+# Single World: Test2
+# -------------------------------------
+
+# test2.py → basic echo
+autorun[Test2] = test2
+
+# test2.py with argument "two" → echo with argument
+autorun[Test2] = test2 two
+
+# test3.pyj → HUD display test
+autorun[Test2] = test3
+
+
+# -------------------------------------
+# Multi World Example (SMP)
+# -------------------------------------
+# World: sekaaho
+# test4.py → SMP echo test
+autorun[sekaaho] = test4

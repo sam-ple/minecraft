@@ -1,0 +1,107 @@
+#!python
+from system.pyj.minescript import *
+
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+ARGB = JavaClass("net.minecraft.util.ARGB")
+HudRenderCallback = JavaClass("net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback")
+
+mc = Minecraft.getInstance()
+
+BTN_W = 100
+BTN_H = 40
+MARGIN = 20
+
+COLOR_NORMAL = ARGB.color(220, 0, 120, 255)
+COLOR_ACTIVE = ARGB.color(220, 255, 80, 80)
+TEXT_COLOR = ARGB.color(255, 255, 255, 255)
+
+# トグル状態
+left_active = False
+center_active = False
+
+
+# -----------------------------
+# 座標
+# -----------------------------
+def get_center_pos():
+    window = mc.getWindow()
+    gui_w = window.getGuiScaledWidth()
+    gui_h = window.getGuiScaledHeight()
+    return gui_w//2 - BTN_W//2, gui_h//2 - BTN_H//2
+
+def get_left_pos():
+    return MARGIN, MARGIN
+
+
+# -----------------------------
+# 描画
+# -----------------------------
+def on_hud_render(guiGraphics, tickDelta):
+
+    cx, cy = get_center_pos()
+    lx, ly = get_left_pos()
+
+    center_color = COLOR_ACTIVE if center_active else COLOR_NORMAL
+    left_color = COLOR_ACTIVE if left_active else COLOR_NORMAL
+
+    # 中央ボタン
+    guiGraphics.fill(cx, cy, cx+BTN_W, cy+BTN_H, center_color)
+    guiGraphics.drawString(mc.font, "3",
+                           cx + BTN_W//2 - 3,
+                           cy + BTN_H//2 - 4,
+                           TEXT_COLOR)
+
+    # 左上ボタン
+    guiGraphics.fill(lx, ly, lx+BTN_W, ly+BTN_H, left_color)
+    guiGraphics.drawString(mc.font, "1",
+                           lx + BTN_W//2 - 3,
+                           ly + BTN_H//2 - 4,
+                           TEXT_COLOR)
+
+
+# -----------------------------
+# クリック判定（トグル式）
+# -----------------------------
+def on_mouse_click(event):
+    global left_active, center_active
+
+    if event.action != 1:
+        return
+
+    window = mc.getWindow()
+    raw_w = window.getWidth()
+    raw_h = window.getHeight()
+    gui_w = window.getGuiScaledWidth()
+    gui_h = window.getGuiScaledHeight()
+
+    mx = event.x * gui_w / raw_w
+    my = event.y * gui_h / raw_h
+
+    cx, cy = get_center_pos()
+    lx, ly = get_left_pos()
+
+    center_hit = (mx >= cx and mx < cx+BTN_W and
+                  my >= cy and my < cy+BTN_H)
+
+    left_hit = (mx >= lx and mx < lx+BTN_W and
+                my >= ly and my < ly+BTN_H)
+
+    if center_hit:
+        center_active = not center_active
+        echo(f">>> CENTER TOGGLE = {center_active}")
+
+    elif left_hit:
+        left_active = not left_active
+        echo(f">>> LEFT TOGGLE = {left_active}")
+
+    else:
+        active_button = None
+        echo(">>> NO BUTTON")
+
+# -----------------------------
+# 登録
+# -----------------------------
+add_event_listener("mouse", on_mouse_click)
+HudRenderCallback.EVENT.register(HudRenderCallback(on_hud_render))
+
+echo("TOGGLE MODE STARTED")

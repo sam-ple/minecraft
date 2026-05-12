@@ -1,0 +1,38 @@
+from system.pyj.minescript import *
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+mc = Minecraft.getInstance()
+
+def get_job_id(cmd: str) -> int | None:
+    wanted = cmd.strip()
+    for job in job_info():
+        # Normalize job.command into a Python string list
+        try:
+            parts = [str(x).strip() for x in job.command]   # Assume iterable
+        except TypeError:
+            parts = [str(job.command).strip()]              # Fallback for non-iterable
+
+        # 1) Exact match (["test2"])
+        if parts == [wanted]:
+            return job.job_id
+
+        # 2) Case with arguments (["test2","arg1"], etc.)
+        if parts and parts[0] == wanted:
+            return job.job_id
+
+        # 3) Joined comparison ("test2 arg1" equals wanted)
+        if " ".join(parts) == wanted:
+            return job.job_id
+    return None
+
+SCRIPT_CMD = "test2"   # If launched with \test2, then "test2"
+
+job_id = get_job_id(SCRIPT_CMD)
+echo(job_id)
+
+if job_id is not None:
+    execute(f"\killjob {job_id}")
+else:
+    # Debug: visualize normalized commands
+    echo("not found; normalized=" +
+         str([[str(x).strip() for x in (j.command if hasattr(j.command,'__iter__') else [j.command])]
+              for j in job_info()]))

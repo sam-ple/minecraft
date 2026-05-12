@@ -1,0 +1,90 @@
+from system.pyj.minescript import *
+
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+ARGB = JavaClass("net.minecraft.util.ARGB")
+HudRenderCallback = JavaClass("net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback")
+
+mc = Minecraft.getInstance()
+
+# ---- Flags ----
+alive = True
+show_hud = True
+
+# ---- ボタン定義 ----
+BTN_TEXT = "killjob -1"   # ボタン名と実行名を同じに
+BTN_TEXT_COLOR = ARGB.color(255, 255, 255, 255)
+BTN_BG_COLOR = ARGB.color(200, 50, 50, 50)
+BTN_BG_COLOR_HOVER = ARGB.color(220, 80, 80, 80)
+
+PAD_X = 6
+PAD_Y = 2
+BTN_WIDTH = mc.font.width(BTN_TEXT) + PAD_X * 2
+BTN_HEIGHT = mc.font.lineHeight + PAD_Y * 2
+MARGIN = 10
+
+# ---- クリック時の挙動 ----
+def run_script(name: str):
+    """渡されたスクリプト名を実行"""
+    execute(rf"\{name}")
+
+def onclick(name: str):
+    """クリック用コールバック生成"""
+    return lambda: run_script(name)
+
+# 今回は killjob -1
+button_callback = onclick(BTN_TEXT)
+
+# ---- Key: F12 toggle ----
+def on_press_key(event):
+    global show_hud
+    if not alive:
+        return
+    if event.action == 0 and event.key == 301:  # F12
+        show_hud = not show_hud
+        echo("HUD toggled: " + str(show_hud))
+
+# ---- Mouse click ----
+def on_mouse_click(event):
+    global alive
+    if not alive or not show_hud or event.action != 1:
+        return
+    scale = mc.getWindow().getGuiScale()
+    mx = event.x / scale
+    my = event.y / scale
+
+    btn_x, btn_y = MARGIN, MARGIN
+    if btn_x <= mx <= btn_x + BTN_WIDTH and btn_y <= my <= btn_y + BTN_HEIGHT:
+        echo(f"Clicked {BTN_TEXT} → running script")
+        button_callback()
+
+# ---- HUD render ----
+def on_hud_render(guiGraphics, tickDelta):
+    if not alive or not show_hud:
+        return
+
+    try:
+        scale = mc.getWindow().getGuiScale()
+        mx = mc.mouseHandler.xpos() / scale
+        my = mc.mouseHandler.ypos() / scale
+    except Exception:
+        mx, my = -1, -1
+
+    btn_x, btn_y = MARGIN, MARGIN
+    hover = (btn_x <= mx <= btn_x + BTN_WIDTH and btn_y <= my <= btn_y + BTN_HEIGHT)
+    color = BTN_BG_COLOR_HOVER if hover else BTN_BG_COLOR
+
+    # 背景
+    guiGraphics.fill(btn_x, btn_y, btn_x + BTN_WIDTH, btn_y + BTN_HEIGHT, color)
+
+    # テキスト（中央寄せ）
+    guiGraphics.drawString(
+        mc.font, BTN_TEXT,
+        btn_x + int((BTN_WIDTH - mc.font.width(BTN_TEXT)) / 2),
+        btn_y + int((BTN_HEIGHT - mc.font.lineHeight) / 2),
+        BTN_TEXT_COLOR
+    )
+
+# ---- Register ----
+add_event_listener("key", on_press_key)
+add_event_listener("mouse", on_mouse_click)
+HudRenderCallback.EVENT.register(HudRenderCallback(on_hud_render))

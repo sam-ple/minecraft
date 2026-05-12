@@ -1,0 +1,201 @@
+from system.pyj.minescript import *
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+ARGB = JavaClass("net.minecraft.util.ARGB")
+HudRenderCallback = JavaClass("net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback")
+
+mc = Minecraft.getInstance()
+
+# ---- フラグ ----
+show_hud = True   # F12で切替（HUDの表示/非表示）
+alive    = True   # stopでFalseにし、描画停止＆\killjob -1
+
+# ---- 表示用テキスト ----
+pos_text = ""
+direction_text = ""
+mob_text = ""
+block_text = ""
+mainhand_text = ""
+offhand_text = ""
+
+# ---- HUD見た目 ----
+PADDING_X = 6
+PADDING_Y = 4
+LINE_SPACING = 2
+TEXT_COLOR = ARGB.color(255, 255, 255, 0)  # 黄色
+BG_COLOR   = ARGB.color(160, 0, 0, 0)      # 半透明黒
+
+# ---- Stopボタン（右下常時）----
+STOP_TEXT = "stop"
+STOP_TEXT_COLOR = ARGB.color(255, 255, 255, 255)   # 白
+STOP_BG_COLOR   = ARGB.color(220, 180, 0, 0)       # 赤系
+STOP_PAD_X = 6
+STOP_PAD_Y = 2
+STOP_WIDTH  = mc.font.width(STOP_TEXT) + STOP_PAD_X * 2
+STOP_HEIGHT = mc.font.lineHeight + STOP_PAD_Y * 2
+MARGIN = 5  # 画面端からの余白
+BOTTOM_EXTRA = 20  # チャットに被らない分だけ上げる量
+
+def wrap_text(text, max_width):
+    """文字列をmax_widthに収まるように分割して返す"""
+    wrapped_lines = []
+    current_line = ""
+    for ch in text:
+        w = mc.font.width(current_line + ch)
+        if w > max_width:
+            wrapped_lines.append(current_line)
+            current_line = ch
+        else:
+            current_line += ch
+    if current_line:
+        wrapped_lines.append(current_line)
+    return wrapped_lines
+
+def on_press_key(event):
+    global show_hud
+    if not alive:
+        return
+    if event.action == 0 and event.key == 301:  # F12
+        show_hud = not show_hud
+        print("HUD toggled:", show_hud)
+
+def on_mouse_click(event):
+    """右下stopボタンクリック判定（HUD表示に関係なく常時有効）"""
+    global alive
+    if not alive:
+        return
+    if event.action != 1:  # mouse down
+        return
+
+    scale = mc.getWindow().getGuiScale()
+    mx = event.x / scale
+    my = event.y / scale
+
+    win_w = mc.getWindow().getGuiScaledWidth()
+    win_h = mc.getWindow().getGuiScaledHeight()
+    stop_x = win_w - STOP_WIDTH - MARGIN
+    stop_y = win_h - STOP_HEIGHT - MARGIN - BOTTOM_EXTRA
+
+    inside_x = (stop_x <= mx) and (mx <= stop_x + STOP_WIDTH)
+    inside_y = (stop_y <= my) and (my <= stop_y + STOP_HEIGHT)
+    if inside_x and inside_y:
+        alive = False
+        # 先に自分の描画を止める
+        # その後、全ジョブ終了
+        execute(r"\killjob -1")
+
+def on_hud_render(guiGraphics, tickDelta):
+    if not alive:
+        return
+
+    # ---- HUD本体（F12で切替）----
+    if show_hud:
+        x = 10
+        y = 10
+        try:
+            lh = mc.font.lineHeight + LINE_SPACING
+        except:
+            lh = 12
+
+        max_display_width = mc.getWindow().getGuiScaledWidth() - (x + 10)
+        wrapped_lines = []
+
+        if pos_text:
+            wrapped_lines.extend(wrap_text(pos_text, max_display_width))
+        else:
+            wrapped_lines.append("")
+        if direction_text:
+            wrapped_lines.extend(wrap_text(direction_text, max_display_width))
+        else:
+            wrapped_lines.append("")
+        if mob_text:
+            wrapped_lines.extend(wrap_text(mob_text, max_display_width))
+        else:
+            wrapped_lines.append("")
+        if block_text:
+            wrapped_lines.extend(wrap_text(block_text, max_display_width))
+        else:
+            wrapped_lines.append("")
+        if mainhand_text:
+            wrapped_lines.extend(wrap_text(mainhand_text, max_display_width))
+        else:
+            wrapped_lines.append("")
+        if offhand_text:
+            wrapped_lines.extend(wrap_text(offhand_text, max_display_width))
+        else:
+            wrapped_lines.append("")
+
+        # 背景サイズ（ジェネレータ式使わない）
+        maxw = 0
+        for s in wrapped_lines:
+            w = mc.font.width(s)
+            if w > maxw:
+                maxw = w
+        total_h = lh * len(wrapped_lines)
+
+        guiGraphics.fill(
+            x - PADDING_X,
+            y - PADDING_Y,
+            x + maxw + PADDING_X,
+            y + total_h + PADDING_Y,
+            BG_COLOR
+        )
+
+        # テキスト描画
+        for i in range(len(wrapped_lines)):
+            s = wrapped_lines[i]
+            guiGraphics.drawString(mc.font, s, x, y + lh * i, TEXT_COLOR)
+
+    # ---- stopボタンは常時描画 ----
+    win_w = mc.getWindow().getGuiScaledWidth()
+    win_h = mc.getWindow().getGuiScaledHeight()
+    stop_x = win_w - STOP_WIDTH - MARGIN
+    stop_y = win_h - STOP_HEIGHT - MARGIN - BOTTOM_EXTRA
+
+    guiGraphics.fill(
+        int(stop_x),
+        int(stop_y),
+        int(stop_x + STOP_WIDTH),
+        int(stop_y + STOP_HEIGHT),
+        STOP_BG_COLOR
+    )
+    text_x = int(stop_x + (STOP_WIDTH  - mc.font.width(STOP_TEXT)) / 2)
+    text_y = int(stop_y + (STOP_HEIGHT - mc.font.lineHeight) / 2)
+    guiGraphics.drawString(mc.font, STOP_TEXT, text_x, text_y, STOP_TEXT_COLOR)
+
+def update_texts():
+    global pos_text, direction_text, mob_text, block_text, mainhand_text, offhand_text
+    if not alive:
+        return
+
+    # 座標
+    p = player_position()
+    pos_text = f"Pos: {int(p[0])}, {int(p[1])}, {int(p[2])}"
+
+    # 向き
+    o = player_orientation()
+    direction_text = f"Yaw: {int(o[0])}, Pitch: {int(o[1])}"
+
+    # モブ
+    e = player_get_targeted_entity(20)
+    mob_text = f"Mob: {e.type}" if e else "Mob: None"
+
+    # ブロック
+    b = player_get_targeted_block(20)
+    block_text = f"Block: {b.type}" if b else "Block: None"
+
+    # メインハンド・オフハンド
+    hands = player_hand_items()
+    if hands:
+        mh = hands.main_hand
+        oh = hands.off_hand
+        mainhand_text = f"Main: {mh.item} NBT: {mh.nbt}" if mh else "Main: None"
+        offhand_text = f"Off: {oh.item} NBT: {oh.nbt}" if oh else "Off: None"
+    else:
+        mainhand_text = "Main: None"
+        offhand_text = "Off: None"
+
+# ---- 登録 ----
+add_event_listener("key", on_press_key)
+add_event_listener("mouse", on_mouse_click)
+HudRenderCallback.EVENT.register(HudRenderCallback(on_hud_render))
+set_interval(update_texts, 1000)

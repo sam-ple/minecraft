@@ -1,0 +1,80 @@
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+ARGB = JavaClass("net.minecraft.util.ARGB")
+HudRenderCallback = JavaClass("net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback")
+
+mc = Minecraft.getInstance()
+show = True
+
+# ---- 表示用テキスト ----
+pos_text = ""
+direction_text = ""
+mob_text = ""
+block_text = ""
+
+# ---- 見た目の調整 ----
+PADDING_X = 6         # 背景の左右パディング
+PADDING_Y = 4         # 背景の上下パディング
+LINE_SPACING = 2      # 行間（fontのlineHeightに足す分）
+TEXT_COLOR = ARGB.color(255, 255, 255, 0)  # 黄色 (R=255,G=255,B=0)
+BG_COLOR   = ARGB.color(160, 0, 0, 0)      # 半透明の黒 (alpha=160)
+
+def on_press_key(event):
+    global show
+    if event.action == 0 and event.key == 301:  # F12
+        show = not show
+        print(f"Display toggled: {show}")
+
+def on_hud_render(guiGraphics, tickDelta):
+    if not show:
+        return
+
+    x, y = 10, 10
+    try:
+        lh = mc.font.lineHeight + LINE_SPACING
+    except:
+        lh = 12  # フォールバック（狭め）
+
+    # 描画する行をまとめる
+    lines = [pos_text, direction_text, mob_text, block_text]
+
+    # 背景サイズを計算
+    maxw = 0
+    for s in lines:
+        if s:
+            w = mc.font.width(s)
+            if w > maxw:
+                maxw = w
+    total_h = lh * len(lines)
+
+    # 半透明の黒い下地を先に描画（テキストの後ろ）
+    # fill(左, 上, 右, 下, 色)
+    guiGraphics.fill(
+        x - PADDING_X,
+        y - PADDING_Y,
+        x + maxw + PADDING_X,
+        y + total_h + PADDING_Y,
+        BG_COLOR
+    )
+
+    # テキストを重ね描画（黄色）
+    for i, s in enumerate(lines):
+        guiGraphics.drawString(mc.font, s, x, y + lh * i, TEXT_COLOR)
+
+def update_texts():
+    global pos_text, direction_text, mob_text, block_text
+
+    p = player_position()
+    pos_text = f"Pos: {int(p[0])}, {int(p[1])}, {int(p[2])}"
+
+    o = player_orientation()
+    direction_text = f"Yaw: {int(o[0])}, Pitch: {int(o[1])}"
+
+    e = player_get_targeted_entity(20)
+    mob_text = f"Mob: {e.type}" if e else "Mob: None"
+
+    b = player_get_targeted_block(20)
+    block_text = f"Block: {b.type}" if b else "Block: None"
+
+add_event_listener("key", on_press_key)
+HudRenderCallback.EVENT.register(HudRenderCallback(on_hud_render))
+set_interval(update_texts, 1000)

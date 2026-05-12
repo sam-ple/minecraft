@@ -1,0 +1,68 @@
+from minescript import *
+
+player = player_name()
+
+def safe_float(v):
+    try:
+        return float(v)
+    except:
+        log(f"[WARN] Failed to convert to float: {v}")
+        return 0.0
+
+def safe_int(v):
+    try:
+        return int(float(v))
+    except:
+        log(f"[WARN] Failed to convert to int: {v}")
+        return 0
+
+def update():
+    orientation = player_orientation()
+    yaw = safe_float(orientation[0])
+    pitch = safe_float(orientation[1])
+
+    pos = player_position()
+    x = safe_int(pos[0])
+    y = safe_int(pos[1])
+    z = safe_int(pos[2])
+    pos_str = f"📍Pos: {x}, {y}, {z} | 🎯Yaw: {int(yaw)}, Pitch: {int(pitch)}"
+
+    entity_info = ""
+    block_info = ""
+
+    e = player_get_targeted_entity(20)
+    if e:
+        ex = safe_int(e.position[0])
+        ey = safe_int(e.position[1])
+        ez = safe_int(e.position[2])
+        etype = e.type
+        if etype.startswith("entity.minecraft."):
+            etype = etype[len("entity.minecraft."):]
+        entity_info = f"👾 Mob: {etype} @ ({ex}, {ey}, {ez})"
+
+    b = player_get_targeted_block(20)
+    if b:
+        bx = safe_int(b.position[0])
+        by = safe_int(b.position[1])
+        bz = safe_int(b.position[2])
+        btype = b.type
+        if btype.startswith("minecraft:"):
+            btype = btype[len("minecraft:"):]
+        block_info = f"🧱 Block: {btype} @ ({bx}, {by}, {bz})"
+
+    extra = ""
+    if entity_info and block_info:
+        extra = f"{entity_info} | {block_info}"
+    elif entity_info:
+        extra = entity_info
+    elif block_info:
+        extra = block_info
+
+    full_line = pos_str
+    if extra:
+        full_line += f" | {extra}"
+
+    actionbar_json = '{ "text": "%s", "color": "aqua" }' % full_line.replace('"', "'")
+    execute(f"title @a actionbar {actionbar_json}")
+
+timer_id = set_interval(update, 1000)

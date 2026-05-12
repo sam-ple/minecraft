@@ -1,0 +1,149 @@
+#!python
+from system.pyj.minescript import *
+
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+ARGB = JavaClass("net.minecraft.util.ARGB")
+HudRenderCallback = JavaClass("net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback")
+
+mc = Minecraft.getInstance()
+
+BTN_W = 140
+BTN_H = 22
+MARGIN = 10
+SPACING = 6
+
+COLOR_NORMAL = ARGB.color(220, 0, 120, 255)
+COLOR_ACTIVE = ARGB.color(220, 255, 80, 80)
+TEXT_COLOR = ARGB.color(255, 255, 255, 255)
+
+current_menu = "main"
+flash_button = None
+flash_timer = 0
+
+main_buttons = ["menu1", "menu2", "menu3", "menu4", "menu5"]
+sub_buttons  = ["killjob", "back"]
+
+# ----------------------------
+# job検索
+# ----------------------------
+def get_job_id(cmd):
+    wanted = cmd.strip()
+    for job in job_info():
+        try:
+            parts = [str(x).strip() for x in job.command]
+        except TypeError:
+            parts = [str(job.command).strip()]
+
+        if parts == [wanted]:
+            return job.job_id
+        if parts and parts[0] == wanted:
+            return job.job_id
+        if " ".join(parts) == wanted:
+            return job.job_id
+    return None
+
+SCRIPT_CMD = "hud"
+
+# ----------------------------
+# 座標取得（GUI基準）
+# ----------------------------
+def get_positions(buttons):
+    pos = {}
+    y = MARGIN
+    for name in buttons:
+        pos[name] = (MARGIN, y)
+        y += BTN_H + SPACING
+    return pos
+
+# ----------------------------
+# HUD描画
+# ----------------------------
+def on_hud_render(guiGraphics, tickDelta):
+
+    global flash_button, flash_timer
+
+    buttons = main_buttons if current_menu == "main" else sub_buttons
+    positions = get_positions(buttons)
+
+    if flash_timer > 0:
+        flash_timer -= 1
+    else:
+        flash_button = None
+
+    for name in positions:
+        x = positions[name][0]
+        y = positions[name][1]
+
+        color = COLOR_ACTIVE if name == flash_button else COLOR_NORMAL
+
+        guiGraphics.fill(x, y, x+BTN_W, y+BTN_H, color)
+        guiGraphics.drawString(
+            mc.font,
+            name,
+            x + 8,
+            y + BTN_H//2 - 4,
+            TEXT_COLOR
+        )
+
+# ----------------------------
+# クリック判定（安定変換）
+# ----------------------------
+def on_mouse_click(event):
+
+    global current_menu, flash_button, flash_timer
+
+    if event.action != 1:
+        return
+
+    window = mc.getWindow()
+
+    raw_w = window.getWidth()
+    raw_h = window.getHeight()
+    gui_w = window.getGuiScaledWidth()
+    gui_h = window.getGuiScaledHeight()
+
+    # ★ 安定変換
+    mx = int(event.x * gui_w / raw_w)
+    my = int(event.y * gui_h / raw_h)
+
+    buttons = main_buttons if current_menu == "main" else sub_buttons
+    positions = get_positions(buttons)
+
+    for name in positions:
+        x = positions[name][0]
+        y = positions[name][1]
+
+        if mx >= x and mx < x+BTN_W and my >= y and my < y+BTN_H:
+
+            flash_button = name
+            flash_timer = 8
+
+            if current_menu == "main":
+                if name == "menu1":
+                    current_menu = "submenu"
+                else:
+                    echo("CLICK " + name)
+
+            else:
+                if name == "killjob":
+                    job_id = get_job_id(SCRIPT_CMD)
+                    if job_id is not None:
+                        echo("KILLED job " + str(job_id))
+                        execute("\\killjob " + str(job_id))
+                    else:
+                        echo("job not found")
+
+                if name == "back":
+                    current_menu = "main"
+
+            return
+
+    echo("no button")
+
+# ----------------------------
+# 登録
+# ----------------------------
+add_event_listener("mouse", on_mouse_click)
+HudRenderCallback.EVENT.register(HudRenderCallback(on_hud_render))
+
+echo("STABLE MENU SYSTEM STARTED")

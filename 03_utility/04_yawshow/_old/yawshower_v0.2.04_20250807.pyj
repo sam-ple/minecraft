@@ -1,0 +1,53 @@
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+ARGB = JavaClass("net.minecraft.util.ARGB")
+HudRenderCallback = JavaClass("net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback")
+
+mc = Minecraft.getInstance()
+show = True
+
+pos_text = ""
+direction_text = ""
+mob_text = ""
+block_text = ""
+
+def on_press_key(event):
+    global show
+    if event.action == 0 and event.key == 301:  # F12
+        show = not show
+        print(f"Display toggled: {show}")
+
+def on_hud_render(guiGraphics, tickDelta):
+    if not show:
+        return
+
+    color = ARGB.color(255, 0, 255, 0)
+    x, y, line_h = 10, 10, 20
+    guiGraphics.drawString(mc.font, pos_text, x, y, color)
+    guiGraphics.drawString(mc.font, direction_text, x, y + line_h, color)
+    guiGraphics.drawString(mc.font, mob_text, x, y + line_h * 2, color)
+    guiGraphics.drawString(mc.font, block_text, x, y + line_h * 3, color)
+
+def update_texts():
+    global pos_text, direction_text, mob_text, block_text
+
+    p = player_position()
+    pos_text = f"Pos: {int(p[0])}, {int(p[1])}, {int(p[2])}"
+
+    o = player_orientation()
+    direction_text = f"Yaw: {int(o[0])}, Pitch: {int(o[1])}"
+
+    e = player_get_targeted_entity(20)
+    if e:
+        mob_text = f"Mob: {e.type}"
+    else:
+        mob_text = "Mob: None"
+
+    b = player_get_targeted_block(20)
+    if b:
+        block_text = f"Block: {b.type}"
+    else:
+        block_text = "Block: None"
+
+add_event_listener("key", on_press_key)
+HudRenderCallback.EVENT.register(HudRenderCallback(on_hud_render))
+set_interval(update_texts, 1000)

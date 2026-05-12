@@ -1,0 +1,37 @@
+#!python
+from minescript import *
+
+# 必要なJavaクラスを呼び出し
+MCClient = JavaClass("net.minecraft.client.Minecraft")
+BlockPos = JavaClass("net.minecraft.core.BlockPos")
+
+# Minecraftクライアントのインスタンスを取得
+client = MCClient.getInstance()
+
+def fetch_current_biome_name():
+    """
+    プレイヤーの現在地のバイオーム名を文字列で返す
+    """
+    # プレイヤーの座標を取得（BlockPos形式）
+    player_pos = client.player.blockPosition()
+
+    # 現在のバイオーム情報を取得
+    biome_holder = client.level.getBiome(player_pos)
+
+    # バイオームのキーを取得して文字列化
+    biome_key = biome_holder.unwrapKey().get()
+    biome_name = biome_key.location().toString()
+
+    return biome_name
+
+def show_biome_once():
+    """
+    現在のバイオーム名をチャットに1回だけ表示
+    """
+    biome = fetch_current_biome_name()
+    echo(f"Biome: {biome}")
+
+# 実行
+show_biome_once()
+
+# set_interval(show_biome_once, 1000)

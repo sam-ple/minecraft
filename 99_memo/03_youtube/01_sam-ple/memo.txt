@@ -1,0 +1,755 @@
+This is a remake of a beginner-friendly setup guide for Mine script, the mod that allows you to use Python in Minecraft, using the Modrinth app.
+I’m demonstrating on a Mac with Modrinth, but the process is basically the same on Windows, Linux, the default Minecraft Launcher, or the CurseForge Launcher.
+Using Python with Mine script is simple:
+all you need to do is install the required mods, edit the config.txt to set your Python path, and then run your program.
+<break time="2s"/>
+Feel free to skip any parts that aren’t necessary for you.
+<break time="5s"/>
+First, download the Modrinth app and log in.
+Then, create a new instance and install the required mods.
+In this video, I’m using Java Edition 1.21.8 with Fabric.
+For mods, Mine script alone is usually enough, but if you’re using Fabric, you also need the Fabric API.
+Other mods are optional?feel free to add them as you like.
+<break time="5s"/>
+Next, set up the Python path in the config.txt.
+First, find where the config.txt file is located.
+Then, check your Python path.
+On Mac, you can find it by running which python3 in Terminal.
+On Windows, use where python in Command Prompt.
+Once you have the path, open config.txt with your favorite text editor and set the Python location.
+Here, I’m using vscode.
+<break time="5s"/>
+Finally, test your setup by running a program.
+Sample programs are available on the official Mine script website.
+Place your .py file in the same folder as Mine script, and save it as something like test.py or sample.py.
+To run it, use \test or \sample.
+Be careful?it uses a backslash \, not a forward slash /.
+<break time="5s"/>
+That’s it for the setup.
+Thank you very much for watching.
+<break time="5s"/>
+For your information, I’ll also show you how to update Python.
+<break time="5s"/>
+And finally, here are the details of my current environment.
+
+---
+
+Beginners Guide 01: TNT Underfoot Script in mine script
+ <break time="2s"/>
+In this guide, we’ll create a script that automatically places TNT under the player’s feet when standing on certain blocks.
+ <break time="4s"/>
+Step 1: Goal
+ We want to detect the block below the player, and if it’s dirt or grass, replace it with TNT.
+ <break time="4s"/>
+Step 2: Running Scripts
+ Place your .py file in the mine script folder.
+ For example, if you have trapfeet.py, run it in chat with \trapfeet.
+ To stop, use \killjob {id} or \killjob -1 for all jobs.
+ <break time="5s"/>
+Step 3: Imports
+ We need three modules:
+ mine script for Minecraft functions,
+ Time for delays,
+ And Math for safe coordinates.
+ <break time="4s"/>
+Step 4: Get Player Position
+ Use m.player_position() and apply math.floor() to get accurate integer coordinates.
+ <break time="4s"/>
+Step 5: Check Block Below
+ With m.getblock(x, y-1, z), we can see what block is under the player.
+ <break time="4s"/>
+Step 6: Place TNT
+ Use m.execute("setblock … minecraft:tnt") to spawn TNT beneath the player.
+ <break time="4s"/>
+Step 7: Add a Block Check
+ Only place TNT if the block matches dirt or grass.
+ We use any() so it works even if the block has extra states like [snowy=true].
+ <break time="5s"/>
+Step 8: Continuous Loop
+ Repeat the check every 0.1 seconds with time.sleep(0.1).
+ <break time="4s"/>
+Step 9: Function
+ Wrap everything into a function called place_tnt_underfoot() for reuse.
+ <break time="4s"/>
+Step 10: Execution
+ Finally, call the function and print “TNT underfoot activated!”.
+ Optionally, use if __name__ == "__main__": for a safe standalone version.
+ <break time="5s"/>
+And that’s it!
+ You now have a working TNT underfoot script in mine script.
+ <break time="4s"/>
+Thank you very much for watching this video!
+ <break time="2s"/>
+
+Reference ①
+ <break time="1s"/>
+
+Let’s take a quick look at the code creation — all in one go. 
+
+ <break time="2s"/>
+
+Reference ②
+ <break time="1s"/>
+Now, let’s move on to the VSCode setup. 
+ <break time="2s"/>
+First, select the correct interpreter. This makes sure your code runs in the proper environment, with all dependencies available. 
+ <break time="2s"/>
+Next, let’s talk about autocompletion. To enable Mine script autocompletion, you need to edit your settings.json. By adding the system/lib folder to both python.analysis.extraPaths and python.autoComplete.extraPaths, VSCode will detect mine script.py and provide autocompletion as well as type hints.
+
+
+
+---
+
+Beginners Guide 02: Backhome Script in mine script
+ <break time="2s"/>
+In this guide, we’ll learn how to detect mouse clicks, key presses, held items, and their combinations in mine script.
+ And then, we’ll use them to create a Backhome script that teleports the player to a saved location.
+ <break time="5s"/>
+Step 1: Goal
+ The script should record the player’s current position as “home.”
+ Then, when the player holds a clock and releases the Left Shift key, they will be teleported back to that home position.
+ Debug messages will confirm the detection and teleport action.
+ <break time="5s"/>
+Step 2: Detect Held Items
+ We can check what the player is holding in their main hand and off hand.
+ If it’s empty, we’ll print “Main hand is empty” or “Off hand is empty.”
+ If the player holds something, we’ll display the item’s name.
+ <break time="4s"/>
+Step 3: Detect Mouse Clicks
+ Mouse events include left and right clicks.
+ When left click is pressed, we print “Left click pressed.”
+ When right click is pressed, we print “Right click pressed.”
+ <break time="4s"/>
+Step 4: Detect Keys
+ We can also listen for key events, such as the Left Shift key or the F12 key.
+ When pressed or released, the script will display a message confirming the action.
+ <break time="4s"/>
+Step 5: Detect a Combination
+ Now let’s combine them.
+ If the player is holding a clock in the main hand, and then releases the Left Shift key,
+ the script will display: “Holding clock in main hand plus Left Shift released.”
+ <break time="5s"/>
+Step 6: Backhome Script Example
+ Here’s how the full script works:
+ First, we give the player a clock for testing.
+ Then, we record the player’s current position and mark it with a gold block.
+ <break time="4s"/>
+Next, the script continuously checks for events.
+ If the player is holding a clock, and releases the Left Shift key,
+ they are instantly teleported back to the saved home coordinates.
+ And a debug message confirms the teleport.
+ <break time="5s"/>
+Final Step: Run the Script
+ When you execute the script, it will display:
+ “Hold a clock and release Left Shift to teleport home!”
+ And from then on, the combination of clock plus Left Shift will bring you back home.
+ <break time="5s"/>
+And that’s it! You now have a working Backhome script in mine script.
+ <break time="4s"/>
+Thank you very much for watching this video!
+ <break time="2s"/>
+
+—
+
+Beginners Guide 03: Countdown with Bossbar, Actionbar, and Scoreboard in mine script
+ <break time="2s"/>
+In this guide, we’ll learn how to make a countdown timer in Minecraft using mine script.
+ We’ll cover three display methods: Actionbar, Scoreboard, and Bossbar.
+ Each section shows how to create, update, and remove the timer.
+ <break time="5s"/>
+Step 1: Actionbar Countdown
+ The actionbar displays messages at the bottom center of the screen.
+ We’ll show the countdown there, update it every second, and clear it when finished.
+ <break time="3s"/>
+ Use the title @a actionbar command to display text to all players.
+ When the countdown ends, clear the actionbar with empty quotes.
+ <break time="4s"/>
+ For example: a ten-second countdown updates every second,
+ and at the end, the actionbar is cleared.
+ You can also format the time as MM:SS, such as 00:10, 00:09, and so on.
+ <break time="5s"/>
+Step 2: Scoreboard Countdown
+ Next, we’ll use the scoreboard.
+ Here, the countdown is displayed in the sidebar.
+ We update it every second, and then remove it when finished.
+ <break time="3s"/>
+ First, create a scoreboard objective.
+ Then, use a dummy player name like “Countdown” to show the numbers.
+ Finally, display the objective on the sidebar.
+ <break time="4s"/>
+ As the timer counts down, the scoreboard updates in real time.
+ When the countdown ends, hide and remove the scoreboard.
+ <break time="4s"/>
+ Again, you can also display the timer in MM:SS format,
+ by updating a dummy line each second and removing the previous one.
+ <break time="5s"/>
+Step 3: Bossbar Countdown
+ Finally, we’ll use the bossbar.
+ This allows the countdown to appear at the top of the screen with a progress bar.
+ <break time="3s"/>
+ First, create a bossbar with a title, color, and maximum value.
+ Set its value to the countdown length and make it visible to all players.
+ <break time="4s"/>
+ During the loop, update the bossbar’s value each second,
+ and also update its title with the countdown number or MM:SS format.
+ <break time="4s"/>
+ When the countdown ends, always remember to remove the bossbar.
+ <break time="5s"/>
+That’s it for this guide!
+ You now know how to make countdowns using the Actionbar, Scoreboard, and Bossbar in mine script.
+ <break time="4s"/>
+ Thanks for watching, and see you next time!
+ <break time="2s"/>
+Beginners Guide 04: Titles, Effects, Sounds, and Particles in mine script
+<break time="2s"/>
+
+In this guide, we’ll learn how to display titles and subtitles,
+apply status effects, play sounds, and show particles in Minecraft using mine script.
+<break time="5s"/>
+
+Step 1: Titles and Subtitles
+Titles are large text displayed at the center of the screen.
+We’ll show how to display a title and an optional subtitle with custom colors.
+<break time="3s"/>
+For example: Welcome messages, level-up notifications, or game over screens.
+<break time="4s"/>
+
+Step 2: Effects
+Next, we’ll apply potion effects such as speed, strength, or night vision.
+These effects can enhance gameplay or be used in custom events.
+<break time="3s"/>
+Always remember to clear effects when you’re done.
+<break time="4s"/>
+
+Step 3: Sounds
+Now, let’s play sounds.
+You can play any Minecraft sound effect, such as level-up, explosion, or mob noises.
+<break time="3s"/>
+Sounds can be used for feedback, atmosphere, or alerts.
+<break time="4s"/>
+
+Step 4: Particles
+Finally, we’ll show particles.
+Particles can create visual effects such as flames, smoke, or enchantment glows.
+<break time="3s"/>
+They are useful for decoration, magic effects, or signaling events.
+<break time="4s"/>
+
+That’s it for this guide!
+You now know how to use titles, effects, sounds, and particles in mine script.
+<break time="3s"/>
+Thanks for watching, and see you next time!
+<break time="2s"/>
+
+—
+
+Beginners Guide 05: Chat Commands and Countdown Timer in Mine script
+<break time="2s"/> Hi everyone! In this guide, we’ll learn how to use **chat commands** in Minecraft with Mine script. <break time="3s"/> First, we’ll make a simple demo with fun commands, and then we’ll create a **countdown timer** you can control entirely through chat. <break time="4s"/> 
+Goal
+<break time="2s"/> By the end of this guide, you’ll be able to: <break time="1s"/> * Listen to chat messages using `EventQueue`. * Make custom commands like `--help` or `--noon`. * Give items, summon mobs, or change the time with commands. * Build a **bossbar countdown timer** fully controllable from chat. <break time="4s"/> 
+Listen to Chat
+<break time="2s"/> Before we make commands, we need to **listen for chat messages**. <break time="1s"/>
+<break time="3s"/> This sets up a listener that reacts to messages starting with `--`. <break time="2s"/> It also removes the `<Player>` prefix automatically. <break time="2s"/>
+
+Simple Chat Commands
+<break time="2s"/> First, we’ll create a fun demo with some simple commands. <break time="1s"/> Here’s what you can do: <break time="1s"/> --help : Show the list of available commands <break time="1s"/> --noon : Set the time to noon <break time="1s"/> --pinksheep : Summon a pink sheep <break time="1s"/> --cheat : Give yourself powerful items <break time="4s"/> Type a command in chat, and the script will respond immediately. <break time="3s"/> 
+Countdown Timer with Chat Control
+<break time="2s"/> Next, we’ll build a **countdown timer** that shows on a bossbar. <break time="2s"/> You can control it fully using chat commands: <break time="1s"/> --settime <seconds> : Set the length of the timer <break time="1s"/> --start : Start the countdown <break time="1s"/> --stop : Stop the timer and remove the bossbar <break time="1s"/> --help : Show timer commands <break time="4s"/> The timer updates every second, and the bossbar shows the remaining time. <break time="4s"/> 
+Running the Script
+<break time="2s"/> Once it’s running, you can start, stop, or change the timer entirely from chat. <break time="4s"/> 
+And that’s it!
+<break time="2s"/>
+You now know how to use chat commands and create a fully controllable countdown timer in Minecraft.
+<break time="3s"/>
+Thanks for watching!
+<break time="2s"/>
+
+Beginners Guide 06: Detecting Player Attacks on Mobs
+<break time="2s"/> Hi everyone! In this guide, we’ll learn how to **detect when the local player attacks mobs** in Minecraft using Mine script. <break time="3s"/> We’ll go step by step: start with a default debug, then handle melee attacks, include projectiles, and finally track remaining health and detect kills. <break time="4s"/> 
+Preparing Gear & Environment
+<break time="2s"/> Before testing, we’ll equip the player with **netherite gear**, weapons, and extra supplies. <break time="2s"/> We’ll also set it to daytime, stop the day-night cycle, and give **buffs** like infinite regeneration and extra hearts. <break time="3s"/> Now you’re ready to attack mobs and watch the damage, health, and kills appear in real time. <break time="3s"/> 
+Default Damage Debug
+<break time="2s"/> First, we’ll set up a **debug mode** that shows all damage events. <break time="1s"/> This helps you get an overview before filtering for specific mobs or attack types. <break time="3s"/> 
+Melee Attacks Only
+<break time="2s"/> Next, we’ll focus on **melee attacks by the local player**. <break time="1s"/> The script will ignore any other damage sources. <break time="3s"/> 
+Add Projectiles
+<break time="2s"/> Then, we’ll include **ranged attacks**, like arrows and tridents, in addition to melee. <break time="2s"/> Now all damage you cause, whether up close or from a distance, will be detected. <break time="3s"/> 
+Remaining Health & Kill Detection
+<break time="2s"/> Finally, we’ll track **how much health each mob has left** and detect when you **kill** a mob. <break time="2s"/> The script will let you see the remaining HP after each hit, and alert you when a mob dies. <break time="3s"/> 
+And that’s it!
+<break time="2s"/>
+You now know how to detect player attacks on mobs, track health, and detect kills using Mine script.
+<break time="3s"/>
+Happy hunting!
+<break time="2s"/>
+
+
+Introduction<break time="2s"/>
+ Mine script is updated very frequently, so information can become outdated quickly. Please keep that in mind.<break time="2s"/>
+ This video is not meant for in-depth learning, but rather to give you a general feel for using Mine script.<break time="2s"/>
+ When using Mine script, always start by carefully reading the official documentation, because AI like ChatGPT can sometimes provide incorrect information.<break time="2s"/>
+ I personally keep a table of contents to make it easier to find APIs.<break time="2s"/>
+ If you are using VS Code, setting up Pylance is useful to understand the APIs as you code.<break time="2s"/>
+ The official documentation also includes pages about PyJinn and Mapping.<break time="2s"/>
+ If you have questions, first check the official Discord to see if someone else has already asked the same thing. Most questions are already discussed.<break time="2s"/>
+Also, community members often share useful scripts on Discord and GitHub, so be sure to check them out.<break time="2s"/>
+ Many scripts are being developed daily—for example, instantly getting items from chests, auto-shooting bows, X-ray, finding End Stronghold coordinates just by throwing an Ender Eye, HUD menus, automatic mining, and more. These are just a few examples, including some older scripts.<break time="2s"/>
+ Now, enjoy your Mine script life! I’m just a regular user, but I’m excited to see more people using it.<break time="2s"/>
+
+I’ll actually try running various tests. It’s all at once, so it might be a bit hard to follow, but this is just to give you an idea.<break time="2s"/>
+
+ Now, enjoy your Mine script life! I’m just a regular user, but I’m excited to see more people using it.<break time="2s"/>
+
+
+
+
+Hello.
+<break time="2s"/>
+ When asking questions or debugging, you can use latest.log or even screen captures, but I thought having a simple chat log would be convenient. So, I created one with Mine script, and this video shows how it works.
+<break time="2s"/>
+You can set the save location of chatlog.txt to wherever you like.
+<break time="2s"/>
+Please note that I’m still a beginner with Minecraft, Python, Mine script, as well as video editing and YouTube. Because of that, there may be some mistakes in the content, so I hope you’ll understand. Also, English is not my native language, so I’m not very fluent.
+<break time="2s"/>
+Thank you for watching.
+
+—
+
+How to Use Mine script Plus<break time="2s"/>
+
+
+Today, let’s explore Mine script Plus.<break time="2s"/>
+
+
+
+ Mine script Plus is a user-friendly API for Mine script that adds powerful features you won’t find in the standard version.<break time="2s"/>
+
+
+You can always check the latest updates on GitHub. But keep in mind—both Mine script and Mine script Plus are updated very frequently, so information may become outdated quickly.<break time="2s"/>
+
+
+With the latest version, the key step for Fabric users is running /install_mappings.<break time="2s"/>
+
+
+As of version 0.14 alpha, the available classes and methods include Inventory, Screen, G u i, Key, Client, Player, Server, World, Trading, Hud, Event, Keybind, and utilities such as copy and paste, NBT handling, light levels, and playing sounds.<break time="2s"/>
+
+
+Getting started is simple.<break time="2s"/>
+
+ First, place mine script_plus.py into your Mine script folder.<break time="2s"/>
+
+ If you want to use Inventory features or get_nbt, add lib_nbt as well.<break time="2s"/>
+
+ The latest version already includes the Java module, but if you’re on an older version, you’ll also need lib_java.<break time="2s"/>
+
+ Be sure to check the README for supported Python and Mine script versions.<break time="2s"/>
+
+
+For newer versions, mappings are required.<break time="2s"/>
+
+ If you’re using Fabric, simply run the command /install_mappings.<break time="2s"/>
+
+ More details about mappings are available at mine script.net/mappings.<break time="2s"/>
+
+
+Before writing your own code, it’s a good idea to try the examples included in the README and the examples folder.<break time="2s"/>
+
+G u i<break time="2s"/>
+Inventory<break time="2s"/>
+Hud<break time="2s"/>
+For the Hud, the scripts shared on Discord are especially clear and useful.<break time="2s"/>
+Util<break time="2s"/>
+In the latest version, new features such as light level and playsound have been added.<break time="2s"/>
+And remember—when using playsound, you need to use Mojang mappings, not Yarn.<break time="2s"/>
+Thank you for watching.<break time="2s"/>
+As a little extra at the end, here’s how to set up Mine script from Modrinth.<break time="2s"/>
+
+—---
+Introducing a program created by a community member. This time, we’re looking at mine script-Miner, an extendable Minecraft miner without movement capabilities that uses occlusion culling to locate block faces with high precision and mine script to interact with Minecraft. Check out the GitHub page for more details.
+
+Thank you for watching
+—---
+Introducing a program created by a community member. <break time="2s"/>
+This time, we’re looking at Debugger, a versatile debugging program for the Minecraft mod Mine script.<break time="2s"/>
+It allows you to quickly access player, entity, and world information directly in-game without the need to write one-off scripts every time.<break time="2s"/>
+With features like clipboard commands, entity inspection, block/chunk update visualization, and key/mouse input tracking, it’s a powerful tool for testing and development.<break time="2s"/>
+Check out the GitHub page for more details.<break time="2s"/>
+As for the rendering features using lib_ren, they were working in version 5.0b6, but as of now, they don’t work in the latest 5.0b7. So if you’d like to try them out, please use version 5.0b6 instead.<break time="2s"/>
+Also, please note that these scripts are updated very frequently, so the information may become outdated rather quickly.<break time="2s"/>
+For this video, I’m using run.py to make it easier to demonstrate, and chatlog.py to simplify saving logs.<break time="2s"/>
+Here, I’ll just be showing what’s possible at a glance without going into full detail, so for more in-depth explanations, please check out the GitHub page.<break time="2s"/>
+Thank you for watching!
+
+At this point, it's still quite brute-force, but visited biomes and completed advancements are displayed on the HUD.
+<break time="2s"/>Thank you for watching!
+
+
+Hey everyone!
+ I’ve been experimenting with Mine script — that’s the mod that lets you use Python in Minecraft.
+ It’s client-side only, but I wanted to make a mini-game that people could play together on a server.
+ That’s how this Advancement Race idea started.
+Since I’m still new to Minecraft servers, I used Aternos for hosting.
+ Minecraft 1.21.9 just came out, but Mine script hasn’t been updated yet,
+ so I’m testing on 1.21.8 for now.
+To test multiplayer, I actually bought a second account — which is fine under the terms of use —
+ and switched between them using Modrinth and Prism Launcher.
+In this Advancement Race, players currently get one point per advancement.
+ But I’m planning to expand it:
+ maybe bonus points for being the first to complete an advancement,
+ score modifiers for certain achievements,
+ or even “featured advancements” worth extra points.
+I’m also thinking of side modes — like a 30-minute creative build phase,
+ where players prepare and then see how many advancements they can complete before time runs out.
+Here’s a quick look at the setup process…
+<break time="2s"/>
+And that’s it for now — thanks so much for watching!
+ Hope you enjoyed this little peek into the project.
+
+Noob Plays Hypixel for the First Time!
+Hypixel First Time - So Much Fun!
+
+Noob Plays Hypixel for the First Time – So Much Fun!
+Noob Plays Hypixel First Time - So Much Fun!
+Just played on Hypixel for the first time — it was awesome!
+
+I started playing Minecraft about half a year ago, in mid-April.
+I had barely gone on any adventures, and I almost never played on servers.
+So my knowledge of Minecraft is still pretty limited.
+But recently, I finally decided to try the Hypixel server, and play SkyBlock for the first time.
+<break time="2s"/>
+SkyBlock… it's unbelievably fun.
+I finally understand why so many people get hooked.
+No matter how much time I have, it never feels like enough.
+I still have a lot to learn, but I plan to take my time and enjoy the journey.
+I’m also thinking about supporting the server by getting the MVP+ rank.
+<break time="2s"/>
+Since it was the Halloween event period, I joined the festivities.
+The atmosphere was great and I really enjoyed it.
+Though when I was relaxing and fishing, I ended up being marked as AFK…
+Looks like I need to occasionally tap the keyboard to avoid that.
+<break time="2s"/>
+
+I also tried the Prototype “Disaster” mini-game.
+It was quick to play and surprisingly fun.
+<break time="2s"/>
+And the zombie-fighting mini-game was great too.
+<break time="2s"/>
+There are so many other games on the Hypixel server, and I want to try them all…
+But honestly, no matter how much time I have, it probably won’t be enough.
+<break time="2s"/>
+It’s famous already, but even so—Hypixel really is an amazing server.
+
+
+
+
+mine script Code Showcase – Simple Script Overview
+<break time="2s"/>
+
+This video simply showcases some work-in-progress mine script scripts.
+Gameplay or demonstration videos will be created separately later.
+<break time="2s"/>
+
+Minigame
+<break time="2s"/>
+
+The executor must have operator, or OP, permissions enabled.
+<break time="2s"/>
+
+AdvRace
+<break time="2s"/>
+
+AdvRace is a competitive mini-game where players race to complete as many Minecraft advancements as possible within a limited time.
+Each advancement grants points, and the player or team with the highest total score at the end wins.
+<break time="2s"/>
+
+OreRace
+<break time="2s"/>
+
+OreRace is a mining-focused competition where players collect ores within a time limit.
+Each type of ore has a predefined point value, and the player or team with the highest score wins.
+<break time="2s"/>
+
+LineRace
+<break time="2s"/>
+
+LineRace challenges players to run along a designated lane of blocks and see how far they can progress within a time limit.
+If a player leaves the lane, they are instantly returned to the starting point.
+The player who reaches the farthest distance before time runs out wins.
+<break time="2s"/>
+
+BiomeRace
+<break time="2s"/>
+
+BiomeRace begins with a short exploration phase in Creative Mode, allowing players to freely scout the world.
+After this phase, players switch to the main challenge: visiting as many different biomes as possible within a set time limit.
+The player or team that visits the most unique biomes wins.
+<break time="2s"/>
+
+ItemRace
+<break time="2s"/>
+
+ItemRace is a time-attack mini-game focused on obtaining specific target items.
+Players are detected and scored when they sneak while holding the required item.
+The fastest player to complete the objective wins.
+<break time="2s"/>
+
+Utility
+<break time="2s"/>
+
+MicroHUD
+<break time="2s"/>
+
+A lightweight and customizable HUD script for Minecraft using mine script and mine script Plus.
+<break time="2s"/>
+
+End of code showcase.
+<break time="1.5s"/>
+
+Thank you for watching.
+
+—--
+
+mine script Code Showcase 2 – Simple Script Overview
+ <break time="2s"/>
+This video showcases some work-in-progress mine script scripts.
+ Gameplay or demonstration videos will be created separately later.
+ <break time="2s"/>
+10Minutes
+ <break time="1s"/>
+Can you complete each objective within 10 minutes?
+Achieve 15 advancements.
+
+
+Obtain full iron equipment (full iron armor).
+
+
+Build a Nether portal and enter the Nether.
+
+
+Fill your inventory entirely with different items (no duplicates).
+ <break time="1s"/>
+Testing Script
+ <break time="1s"/>
+SearchWolf
+ <break time="1s"/>
+SearchWolf is a utility for discovering and tracking all wolf variants.
+ <break time="1s"/>
+Debug Script
+ <break time="1s"/>
+Summon Script
+ <break time="1s"/>
+End of code showcase.
+ <break time="1.5s"/>
+Thank you for watching.
+初めての建築。
+去年の2025年4月からマイクラを始めたものの、
+ なんだかんだで「ちゃんとマイクラをした」と言えるほど遊んだことはなく、
+ シングルでもマルチでも、冒険も建築も、これまで一度もしたことがありませんでした。
+マイクラ自体の仕組みや知識をつけるためにも、
+2025年9月に稼働したばかりの、まだ新しいマルチサーバーに最近参加し、
+初めて建築に挑戦しました。
+磨かれた石の作り方も、ガラスの作り方も、コンクリートブロックの作り方も――
+ すべて、何も知らないところからのスタート。
+それでも結果として、「自分が作りたいもの」は、
+ ある程度形にできたと思います。
+今回は、せっかく作ったので、記録も兼ねて残すことにしました。
+作ったのは、屋上・地上3階・地下2階の、かなりシンプルな四角い建物です。
+外装はすべて白のコンクリートブロックと磨かれた石で作り、
+ 板ガラスをふんだんに使って、全体的に明るい雰囲気にしました。
+ハーフブロックで階段を作ったり、地下には畑を用意したり、
+ 梯子で一気に昇降できるようにしたり、
+ 地下からも外に出られるようにしたり、
+ 家の周りではウーパールーパーを飼ったりと、
+ 考えながら作るのは本当に楽しかったです。
+覚えることは本当に多くて、自分用のチートシートまで作りましたが、
+ それも含めて、今は満足しています。
+サーバー内では、MineScriptのMODで自作のHUDを使ったり、
+ 他の人が作ったスクリプトを使ったりと、かなり便利だったので、
+ これからもいろいろ作ってみたいと思っています。
+MODについては、これまでMineScript以外はほとんど使ったことがありませんでしたが、
+ このサーバーのDiscordでおすすめされていたMODをいくつか導入してみたところ、
+ 本当に便利だと感じました。
+また、マルチで遊んだことがある人には当たり前のことかもしれませんが、
+ このサーバーでは、資源ワールドがあったり、ドアやチェストをロックできたり、
+ 経済システムやダンジョン、面白いエンチャント本があったり、
+ WEB上で進捗やマップを見ることもできて、そこも面白かったです。
+今は建築が一段落したので、スニッファーを育てたりしながら遊び中。
+今後は冒険したり、進捗をいろいろ達成したり、
+村人を職業化したり、トラップを作ってみたいなど、
+やってみたいことがたくさんあってワクワクしています。
+マイクラって、本当にいろいろなことができる。
+ 改めて、奥が深いゲームだなと感じました。
+そういえば、HypixelサーバーではすぐにMVP+にしたものの、
+ 結局、ほとんど遊んでいません。
+
+
+
+My First Build
+<break time="1.2s"/>
+
+I started playing Minecraft in April 2025, but to be honest, I had never really played it properly.
+I had never gone on adventures or built anything—neither in single-player nor multiplayer.
+<break time="1.4s"/>
+
+In order to learn how Minecraft actually works, I recently joined a brand-new multiplayer server
+that had just launched in September 2025,
+and that’s where I decided to try building for the first time.
+<break time="1.4s"/>
+
+I didn’t know how to make polished stone, glass, or even concrete blocks.
+I was starting completely from scratch.
+<break time="1.3s"/>
+
+Still, in the end, I think I managed to shape something
+fairly close to what I had imagined.
+<break time="1.4s"/>
+
+Since I had put so much effort into it,
+I decided to document it this time.
+<break time="1.6s"/>
+
+What I built was a very simple, box-shaped building,
+with a rooftop,
+three floors above ground,
+and two underground floors.
+<break time="1.5s"/>
+
+The exterior is made entirely of white concrete blocks and polished stone,
+and I used plenty of glass panes to make the whole building feel bright and open.
+<break time="1.2s"/>
+
+I built stairs using slabs,
+added a farm in the basement,
+set up ladders to move quickly between floors,
+made it possible to exit directly from underground,
+and even kept axolotls around the house.
+<break time="1.4s"/>
+
+Thinking through all these details
+and building them step by step
+was genuinely a lot of fun.
+<break time="1.5s"/>
+
+There was so much to learn that I even made my own cheat sheet,
+but taking all of that into account,
+I’m really satisfied with how it turned out.
+<break time="1.4s"/>
+
+On this server, I use a custom HUD I made with the Mine Script mod,
+along with scripts created by other players.
+<break time="1.2s"/>
+
+They turned out to be incredibly useful,
+and I’d like to keep making more things like that.
+<break time="1.4s"/>
+
+As for mods, I had barely used anything other than Mine Script before.
+However, after installing several mods recommended on this server’s Discord,
+I was honestly surprised by how convenient they were.
+<break time="1.4s"/>
+
+This server also has resource worlds,
+lockable doors and chests,
+an economy system,
+dungeons,
+and unique enchanted books.
+<break time="1.2s"/>
+
+I can even check my own progress and the world map on the web,
+and I found that really interesting.
+<break time="1.4s"/>
+
+Now that the building itself is mostly finished,
+I’ve been spending my time doing things like raising sniffers.
+<break time="1.4s"/>
+
+Going forward, there are so many things I want to try—
+going on adventures,
+completing more advancements,
+assigning professions to villagers,
+and building various farms and traps.
+<break time="1.3s"/>
+
+It’s all very exciting.
+<break time="1.5s"/>
+
+Minecraft really lets you do so many things.
+Once again,
+it reminded me just how deep the game really is.
+<break time="1.8s"/>
+
+And by the way,
+I upgraded to MVP+ on the Hypixel server pretty much right away…
+but I’ve barely played there at all.
+<break time="1.8s"/>
+
+Thank you for watching.
+
+
+
+
+🎬 Slide 1
+Minescript FAQ
+How Can I Enable Autorun?
+Automatically start a script
+when entering a world.
+
+🎬 Slide 2
+What is Autorun?
+
+Autorun lets you start a script
+automatically when entering a world.
+
+No manual command needed.
+
+🎬 Slide 3
+Autorun is Simple.
+
+You only need to add one line
+to your config.txt.
+
+🎬 Slide 4
+For a Specific World
+
+In config.txt:
+
+autorun[WORLDNAME] = script_name
+
+Replace:
+WORLDNAME → your world name
+script_name → script file name (without .py or .pyj)
+Optional → add arguments after the script name
+
+🎬 Slide 5
+For All Worlds
+
+In config.txt:
+
+autorun[*] = script_name
+
+The script will start
+in every world.
+
+🎬 Slide 6
+Test Cases
+
+Single World Test 1
+Single World Test 2
+Multi World Test
+
+In this example,
+I used the following sample scripts:
+
+Script A
+Script B
+Script C
+
+🎬 Slide 7
+Result
+
+When entering the world,
+the script started automatically.
+
+🎬 Slide 8
+Thank You for Watching!
+

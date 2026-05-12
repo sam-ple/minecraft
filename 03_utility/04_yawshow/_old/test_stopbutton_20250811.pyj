@@ -1,0 +1,77 @@
+from system.pyj.minescript import *
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+ARGB = JavaClass("net.minecraft.util.ARGB")
+HudRenderCallback = JavaClass("net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback")
+
+mc = Minecraft.getInstance()
+
+# 表示フラグ（Stop後は非表示）
+show = True
+
+# Stopボタン設定（小さめ）
+STOP_TEXT = "stop"
+STOP_TEXT_COLOR = ARGB.color(255, 255, 255, 255)   # 白
+STOP_BG_COLOR = ARGB.color(220, 180, 0, 0)         # 少し明るい赤
+STOP_PAD_X = 6
+STOP_PAD_Y = 2
+STOP_WIDTH = mc.font.width(STOP_TEXT) + STOP_PAD_X * 2
+STOP_HEIGHT = mc.font.lineHeight + STOP_PAD_Y * 2
+
+# 右下オフセット（画面端からの余白）
+MARGIN = 5
+
+def on_mouse_click(event):
+    # クリック時のみ判定
+    if not show:
+        return
+    if event.action != 1:
+        return
+
+    # 画面スケール補正
+    scale = mc.getWindow().getGuiScale()
+    mx = event.x / scale
+    my = event.y / scale
+
+    # 現在のボタン座標（右下固定）
+    win_w = mc.getWindow().getGuiScaledWidth()
+    win_h = mc.getWindow().getGuiScaledHeight()
+    stop_x = win_w - STOP_WIDTH - MARGIN
+    stop_y = win_h - STOP_HEIGHT - MARGIN
+
+    inside_x = (stop_x <= mx) and (mx <= stop_x + STOP_WIDTH)
+    inside_y = (stop_y <= my) and (my <= stop_y + STOP_HEIGHT)
+
+    if inside_x and inside_y:
+        # 非表示にして全ジョブ終了
+        global show
+        show = False
+        execute(r"\killjob -1")
+
+def on_hud_render(guiGraphics, tickDelta):
+    if not show:
+        return
+
+    win_w = mc.getWindow().getGuiScaledWidth()
+    win_h = mc.getWindow().getGuiScaledHeight()
+
+    # ボタン位置（右下）
+    stop_x = win_w - STOP_WIDTH - MARGIN
+    stop_y = win_h - STOP_HEIGHT - MARGIN
+
+    # 背景（角丸は不可なので矩形）
+    guiGraphics.fill(
+        int(stop_x),
+        int(stop_y),
+        int(stop_x + STOP_WIDTH),
+        int(stop_y + STOP_HEIGHT),
+        STOP_BG_COLOR
+    )
+
+    # テキスト（中央寄せ）
+    text_x = int(stop_x + (STOP_WIDTH - mc.font.width(STOP_TEXT)) / 2)
+    text_y = int(stop_y + (STOP_HEIGHT - mc.font.lineHeight) / 2)
+    guiGraphics.drawString(mc.font, STOP_TEXT, text_x, text_y, STOP_TEXT_COLOR)
+
+# イベント登録（キー操作は不要なので未登録）
+add_event_listener("mouse", on_mouse_click)
+HudRenderCallback.EVENT.register(HudRenderCallback(on_hud_render))

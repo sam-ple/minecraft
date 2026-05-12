@@ -1,0 +1,147 @@
+from system.pyj.minescript import *
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+ARGB = JavaClass("net.minecraft.util.ARGB")
+HudRenderCallback = JavaClass("net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback")
+BlockPos = JavaClass("net.minecraft.core.BlockPos")
+
+mc = Minecraft.getInstance()
+
+# ---- Flags ----
+show_hud = True       # HUD全体は常に表示
+pos_enabled = True    # Pos行だけON/OFFする
+
+# ---- Display text variables ----
+pos_text = ""
+biome_text = ""
+direction_text = ""
+mob_text = ""
+block_text = ""
+mainhand_text = ""
+offhand_text = ""
+
+# ---- HUD appearance ----
+PADDING_X = 6
+PADDING_Y = 4
+LINE_SPACING = 2
+TEXT_COLOR = ARGB.color(255, 255, 255, 0)
+BG_COLOR   = ARGB.color(160, 0, 0, 0)
+
+# ---- Button (Pos toggle) ----
+TOGGLE_TEXT = "POS"
+TOGGLE_TEXT_COLOR = ARGB.color(255, 255, 255, 255)
+TOGGLE_BG_COLOR   = ARGB.color(220, 180, 0, 0)
+TOGGLE_PAD_X = 6
+TOGGLE_PAD_Y = 2
+TOGGLE_WIDTH  = mc.font.width(TOGGLE_TEXT) + TOGGLE_PAD_X * 2
+TOGGLE_HEIGHT = mc.font.lineHeight + TOGGLE_PAD_Y * 2
+MARGIN = 5
+BOTTOM_EXTRA = 20
+
+# ---- Utility: wrap long text ----
+def wrap_text(text, max_width):
+    wrapped_lines = []
+    current_line = ""
+    for ch in text:
+        w = mc.font.width(current_line + ch)
+        if w > max_width:
+            wrapped_lines.append(current_line)
+            current_line = ch
+        else:
+            current_line += ch
+    if current_line:
+        wrapped_lines.append(current_line)
+    return wrapped_lines
+
+# ---- Event: mouse click ----
+def on_mouse_click(event):
+    global pos_enabled
+    if event.action != 1:
+        return
+    scale = mc.getWindow().getGuiScale()
+    mx = event.x / scale
+    my = event.y / scale
+    win_w = mc.getWindow().getGuiScaledWidth()
+    win_h = mc.getWindow().getGuiScaledHeight()
+    btn_x = win_w - TOGGLE_WIDTH - MARGIN
+    btn_y = win_h - TOGGLE_HEIGHT - MARGIN - BOTTOM_EXTRA
+    inside_x = (btn_x <= mx) and (mx <= btn_x + TOGGLE_WIDTH)
+    inside_y = (btn_y <= my) and (my <= btn_y + TOGGLE_HEIGHT)
+    if inside_x and inside_y:
+        pos_enabled = not pos_enabled
+        echo("Pos line toggled: " + str(pos_enabled))
+
+# ---- HUD render ----
+def on_hud_render(guiGraphics, tickDelta):
+    if show_hud:
+        x = 10
+        y = 10
+        try:
+            lh = mc.font.lineHeight + LINE_SPACING
+        except:
+            lh = 12
+        max_display_width = mc.getWindow().getGuiScaledWidth() - (x + 10)
+        wrapped_lines = []
+
+        # Pos行はpos_enabledがTrueの時だけ追加
+        if pos_enabled and pos_text:
+            wrapped_lines.extend(wrap_text(pos_text, max_display_width))
+
+        # 他の行は常に追加
+        for text in (biome_text, direction_text, mob_text, block_text, mainhand_text, offhand_text):
+            if text:
+                wrapped_lines.extend(wrap_text(text, max_display_width))
+            else:
+                wrapped_lines.append("")
+
+        # max width
+        maxw = 0
+        for s in wrapped_lines:
+            w = mc.font.width(s)
+            if w > maxw:
+                maxw = w
+        total_h = lh * len(wrapped_lines)
+
+        guiGraphics.fill(x - PADDING_X, y - PADDING_Y, x + maxw + PADDING_X, y + total_h + PADDING_Y, BG_COLOR)
+        for i, s in enumerate(wrapped_lines):
+            guiGraphics.drawString(mc.font, s, x, y + lh * i, TEXT_COLOR)
+
+    # Button draw
+    win_w = mc.getWindow().getGuiScaledWidth()
+    win_h = mc.getWindow().getGuiScaledHeight()
+    btn_x = win_w - TOGGLE_WIDTH - MARGIN
+    btn_y = win_h - TOGGLE_HEIGHT - MARGIN - BOTTOM_EXTRA
+    guiGraphics.fill(int(btn_x), int(btn_y), int(btn_x + TOGGLE_WIDTH), int(btn_y + TOGGLE_HEIGHT), TOGGLE_BG_COLOR)
+    text_x = int(btn_x + (TOGGLE_WIDTH  - mc.font.width(TOGGLE_TEXT)) / 2)
+    text_y = int(btn_y + (TOGGLE_HEIGHT - mc.font.lineHeight) / 2)
+    guiGraphics.drawString(mc.font, TOGGLE_TEXT, text_x, text_y, TOGGLE_TEXT_COLOR)
+
+# ---- Update texts ----
+def update_texts():
+    global pos_text, biome_text, direction_text, mob_text, block_text, mainhand_text, offhand_text
+    p = player_position()
+    pos_text = f"Pos: {int(p[0])}, {int(p[1])}, {int(p[2])}"
+    pos_obj = BlockPos(int(p[0]), int(p[1]), int(p[2]))
+    biomeHolder = mc.level.getBiome(pos_obj)
+    key = biomeHolder.unwrapKey().get()
+    biome_name = key.location().toString()
+    biome_text = "Biome: " + biome_name.replace("minecraft:", "")
+    o = player_orientation()
+    direction_text = f"Yaw: {int(o[0])}, Pitch: {int(o[1])}"
+    e = player_get_targeted_entity(20)
+    mob_text = "Mob: " + (e.type if e else "None")
+    b = player_get_targeted_block(20)
+    block_text = "Block: " + (b.type.replace("minecraft:", "") if b else "None")
+    hands = player_hand_items()
+    if hands:
+        mh = hands.main_hand
+        oh = hands.off_hand
+        mainhand_text = "Main: " + (mh.item.replace("minecraft:", "") if mh else "None")
+        offhand_text = "Off: " + (oh.item.replace("minecraft:", "") if oh else "None")
+    else:
+        mainhand_text = "Main: None"
+        offhand_text = "Off: None"
+
+# ---- Event listeners ----
+add_event_listener("mouse", on_mouse_click)
+HudRenderCallback.EVENT.register(HudRenderCallback(on_hud_render))
+set_interval(update_texts, 1000)

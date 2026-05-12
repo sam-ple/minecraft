@@ -1,0 +1,97 @@
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+RenderSystem = JavaClass("com.mojang.blaze3d.systems.RenderSystem")
+HudRenderCallback = JavaClass("net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback")
+ARGB = JavaClass("net.minecraft.util.ARGB")
+
+mc = Minecraft.getInstance()
+
+show = True
+
+pos_text = "Pos: ..."
+direction_text = "Yaw/Pitch: ..."
+mob_text = "Mob: None"
+block_text = "Block: None"
+
+def safe_float(v):
+    try:
+        return float(v)
+    except:
+        return 0.0
+
+def safe_int(v):
+    try:
+        return int(float(v))
+    except:
+        return 0
+
+def on_press_key(event):
+    global show
+
+    if event.action == 0 and event.key == 301:  # F12
+        show = not show
+        print(f'show = {show}')
+
+def on_hud_render(guiGraphics, tickDeltaManager):
+    if not show:
+        return
+
+    color = ARGB.color(255, 0, 255, 0)
+    x = 10
+    y_start = 10
+    line_height = 20
+
+    # Draw each line separately
+    guiGraphics.drawString(mc.font, pos_text, x, y_start, color)
+    guiGraphics.drawString(mc.font, direction_text, x, y_start + line_height, color)
+    guiGraphics.drawString(mc.font, mob_text, x, y_start + line_height * 2, color)
+    guiGraphics.drawString(mc.font, block_text, x, y_start + line_height * 3, color)
+
+def update_texts():
+    global pos_text, direction_text, mob_text, block_text
+
+    orientation = player_orientation()
+    yaw = safe_float(orientation[0])
+    pitch = safe_float(orientation[1])
+
+    pos = player_position()
+    x = safe_int(pos[0])
+    y = safe_int(pos[1])
+    z = safe_int(pos[2])
+    pos_text = f"📍 Position: {x}, {y}, {z}"
+    direction_text = f"🧭 Yaw: {int(yaw)}°, Pitch: {int(pitch)}°"
+
+    e = player_get_targeted_entity(20)
+    if e:
+        try:
+            ex = safe_int(e.position[0])
+            ey = safe_int(e.position[1])
+            ez = safe_int(e.position[2])
+            etype = e.type
+            if etype.startswith("entity.minecraft."):
+                etype = etype[len("entity.minecraft."):]
+            mob_text = f"👾 Mob: {etype} @ ({ex}, {ey}, {ez})"
+        except:
+            mob_text = "👾 Mob: (error)"
+    else:
+        mob_text = "👾 Mob: None"
+
+    b = player_get_targeted_block(20)
+    if b:
+        try:
+            bx = safe_int(b.position[0])
+            by = safe_int(b.position[1])
+            bz = safe_int(b.position[2])
+            btype = b.type
+            if btype.startswith("minecraft:"):
+                btype = btype[len("minecraft:"):]
+            block_text = f"🧱 Block: {btype} @ ({bx}, {by}, {bz})"
+        except:
+            block_text = "🧱 Block: (error)"
+    else:
+        block_text = "🧱 Block: None"
+
+
+add_event_listener("key", on_press_key)
+HudRenderCallback.EVENT.register(HudRenderCallback(on_hud_render))
+
+set_interval(update_texts, 1000)

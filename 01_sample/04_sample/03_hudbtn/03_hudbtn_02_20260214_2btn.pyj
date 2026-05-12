@@ -1,0 +1,143 @@
+#!python
+from system.pyj.minescript import *
+
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+ARGB = JavaClass("net.minecraft.util.ARGB")
+HudRenderCallback = JavaClass("net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback")
+
+mc = Minecraft.getInstance()
+
+BTN_W = 100
+BTN_H = 40
+MARGIN = 20
+
+COLOR_BTN = ARGB.color(220, 0, 120, 255)
+COLOR_BORDER = ARGB.color(255, 255, 255, 255)
+TEXT_COLOR = ARGB.color(255, 255, 255, 255)
+CLICK_COLOR = ARGB.color(255, 255, 255, 255)
+
+last_click = None
+
+
+# -----------------------------
+# 座標取得
+# -----------------------------
+def get_center_pos():
+    window = mc.getWindow()
+    gui_w = window.getGuiScaledWidth()
+    gui_h = window.getGuiScaledHeight()
+    return gui_w//2 - BTN_W//2, gui_h//2 - BTN_H//2
+
+def get_top_left_pos():
+    return MARGIN, MARGIN
+
+
+# -----------------------------
+# 描画
+# -----------------------------
+def on_hud_render(guiGraphics, tickDelta):
+
+    # 中央
+    cx, cy = get_center_pos()
+    guiGraphics.fill(cx, cy, cx+BTN_W, cy+BTN_H, COLOR_BTN)
+    guiGraphics.drawString(mc.font, "3",
+                           cx + BTN_W//2 - 3,
+                           cy + BTN_H//2 - 4,
+                           TEXT_COLOR)
+
+    # 左上
+    lx, ly = get_top_left_pos()
+    guiGraphics.fill(lx, ly, lx+BTN_W, ly+BTN_H, COLOR_BTN)
+    guiGraphics.drawString(mc.font, "1",
+                           lx + BTN_W//2 - 3,
+                           ly + BTN_H//2 - 4,
+                           TEXT_COLOR)
+
+    # クリック可視化
+    if last_click:
+        mx, my = last_click
+        size = 4
+        guiGraphics.fill(int(mx-size), int(my-size),
+                         int(mx+size), int(my+size),
+                         CLICK_COLOR)
+
+
+# -----------------------------
+# 完全デバッグクリック
+# -----------------------------
+def on_mouse_click(event):
+    global last_click
+
+    if event.action != 1:
+        return
+
+    window = mc.getWindow()
+
+    raw_w = window.getWidth()
+    raw_h = window.getHeight()
+    gui_w = window.getGuiScaledWidth()
+    gui_h = window.getGuiScaledHeight()
+
+    # RAW → GUI変換
+    mx = event.x * gui_w / raw_w
+    my = event.y * gui_h / raw_h
+
+    last_click = (mx, my)
+
+    # ボタン座標
+    cx, cy = get_center_pos()
+    lx, ly = get_top_left_pos()
+
+    # 中央条件
+    c_x1 = mx >= cx
+    c_x2 = mx < cx + BTN_W
+    c_y1 = my >= cy
+    c_y2 = my < cy + BTN_H
+    center_hit = c_x1 and c_x2 and c_y1 and c_y2
+
+    # 左上条件
+    l_x1 = mx >= lx
+    l_x2 = mx < lx + BTN_W
+    l_y1 = my >= ly
+    l_y2 = my < ly + BTN_H
+    left_hit = l_x1 and l_x2 and l_y1 and l_y2
+
+    # =============================
+    # 全方向デバッグ出力
+    # =============================
+    echo("============== CLICK DEBUG ==============")
+    echo(f"RAW        : ({event.x:.2f}, {event.y:.2f})")
+    echo(f"GUI        : ({mx:.2f}, {my:.2f})")
+    echo(f"RAW SIZE   : ({raw_w}, {raw_h})")
+    echo(f"GUI SIZE   : ({gui_w}, {gui_h})")
+    echo("")
+    echo(f"CENTER POS : {cx},{cy}")
+    echo(f"LEFT POS   : {lx},{ly}")
+    echo("")
+    echo(f"CENTER X1  : {c_x1}")
+    echo(f"CENTER X2  : {c_x2}")
+    echo(f"CENTER Y1  : {c_y1}")
+    echo(f"CENTER Y2  : {c_y2}")
+    echo(f"CENTER HIT : {center_hit}")
+    echo("")
+    echo(f"LEFT X1    : {l_x1}")
+    echo(f"LEFT X2    : {l_x2}")
+    echo(f"LEFT Y1    : {l_y1}")
+    echo(f"LEFT Y2    : {l_y2}")
+    echo(f"LEFT HIT   : {left_hit}")
+    echo("=========================================")
+
+    if center_hit:
+        echo(">>> BUTTON 3 PRESSED")
+
+    if left_hit:
+        echo(">>> BUTTON 1 PRESSED")
+
+
+# -----------------------------
+# 登録
+# -----------------------------
+add_event_listener("mouse", on_mouse_click)
+HudRenderCallback.EVENT.register(HudRenderCallback(on_hud_render))
+
+echo("FULL DEBUG MODE STARTED")

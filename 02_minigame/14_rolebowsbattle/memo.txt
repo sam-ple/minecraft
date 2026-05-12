@@ -1,0 +1,14 @@
+1. 全プレイヤーに発光
+/effect give @a minecraft:glowing 30 0 true
+2. 全モブに発光
+/effect give @e[type=!player] minecraft:glowing 30 0 true
+3. 全員（プレイヤー＋モブ）に発光
+/effect give @e minecraft:glowing 30 0 true
+
+import minescript as m
+import time
+
+while True:
+    m.execute("effect give @e minecraft:glowing 10 0 true")
+    time.sleep(0.5)
+

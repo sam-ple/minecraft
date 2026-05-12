@@ -1,0 +1,64 @@
+# Minimal Menu UI with Mouse Debug (Pyjinn)
+from system.pyj.minescript import *
+
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+ARGB = JavaClass("net.minecraft.util.ARGB")
+HudRenderCallback = JavaClass("net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback")
+
+mc = Minecraft.getInstance()
+
+# ---- Flags ----
+menu_open = True
+current_menu = 0
+
+# ---- Menu Settings ----
+MENU_NAMES = ["Menu 1", "Menu 2", "Menu 3"]
+BUTTON_WIDTH = 80
+BUTTON_HEIGHT = 20
+BUTTON_SPACING = 10
+MARGIN_TOP = 10
+MARGIN_LEFT = 10
+
+TEXT_COLOR = ARGB.color(255, 255, 255, 255)
+BG_COLOR = ARGB.color(160, 0, 0, 0)
+HIGHLIGHT_COLOR = ARGB.color(160, 0, 128, 255)
+
+# ---- Mouse Click Listener ----
+def on_mouse_click(event):
+    global current_menu
+    if not menu_open or event.action != 1:
+        return
+
+    scale = mc.getWindow().getGuiScale()
+    if scale == 0:
+        return
+
+    mx = event.x / scale
+    my = event.y / scale
+
+    echo(f"Mouse click: x={int(mx)}, y={int(my)}")
+
+    for i in range(len(MENU_NAMES)):
+        x = MARGIN_LEFT + i * (BUTTON_WIDTH + BUTTON_SPACING)
+        y = MARGIN_TOP
+        echo(f"Button{i}: x={x}-{x+BUTTON_WIDTH}, y={y}-{y+BUTTON_HEIGHT}")
+        if x <= mx <= x + BUTTON_WIDTH and y <= my <= y + BUTTON_HEIGHT:
+            current_menu = i
+            echo(f"Selected: {MENU_NAMES[i]}")
+
+# ---- Render ----
+def on_render(guiGraphics, tickDelta):
+    if not menu_open:
+        return
+
+    font = mc.font
+    for i in range(len(MENU_NAMES)):
+        x = MARGIN_LEFT + i * (BUTTON_WIDTH + BUTTON_SPACING)
+        y = MARGIN_TOP
+        color = HIGHLIGHT_COLOR if i == current_menu else BG_COLOR
+        guiGraphics.fill(x, y, x + BUTTON_WIDTH, y + BUTTON_HEIGHT, color)
+        guiGraphics.drawString(font, MENU_NAMES[i], x + 10, y + 6, TEXT_COLOR)
+
+# ---- Register ----
+add_event_listener("mouse", on_mouse_click)
+HudRenderCallback.EVENT.register(HudRenderCallback(on_render))

@@ -1,0 +1,92 @@
+from system.pyj.minescript import *
+
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+ARGB = JavaClass("net.minecraft.util.ARGB")
+HudRenderCallback = JavaClass("net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback")
+mc = Minecraft.getInstance()
+
+alive = True
+show_hud = True
+
+# ---- 実行したいコマンド ----
+config_scripts = [
+    "killjob -1", "install_mappings", "reload_mappings",
+    "jobs", "astar_pathing"
+]
+
+PAD_X = 6
+PAD_Y = 2
+MARGIN = 10
+BTN_HEIGHT = mc.font.lineHeight + PAD_Y * 2
+
+buttons = []
+
+# ---- ボタン生成 ----
+x_offset = MARGIN
+for script in config_scripts:
+    width = mc.font.width(script) + PAD_X * 2
+    buttons.append({
+        "text": script,
+        "x": x_offset,
+        "y": MARGIN,
+        "width": width,
+        "height": BTN_HEIGHT,
+        "command": script  # ← 関数ではなくコマンド文字列を保持
+    })
+    x_offset += width + MARGIN
+
+# ---- F12でHUDの表示切替 ----
+def on_press_key(event):
+    global show_hud
+    if not alive:
+        return
+    if event.action == 0 and event.key == 301:
+        show_hud = not show_hud
+        echo("HUD toggled: " + str(show_hud))
+
+# ---- マウスクリック ----
+def on_mouse_click(event):
+    scale = mc.getWindow().getGuiScale()
+    mx = event.x / scale
+    my = event.y / scale
+    echo(f"[DEBUG] raw=({event.x}, {event.y}), scaled=({mx:.1f}, {my:.1f}), scale={scale}")
+
+    for btn in buttons:
+        echo(f"[DEBUG] checking {btn['text']} rect=({btn['x']}..{btn['x']+btn['width']}, {btn['y']}..{btn['y']+btn['height']})")
+        if btn["x"] <= mx <= btn["x"] + btn["width"] and btn["y"] <= my <= btn["y"] + btn["height"]:
+            echo(f"[CLICK DETECTED] {btn['text']}")
+            execute("\\" + btn["command"])
+            break
+
+# ---- HUD描画 ----
+def on_hud_render(guiGraphics, tickDelta):
+    if not alive or not show_hud:
+        return
+    try:
+        scale = mc.getWindow().getGuiScale()
+        mx = mc.mouseHandler.xpos() / scale
+        my = mc.mouseHandler.ypos() / scale
+    except Exception:
+        mx, my = -1, -1
+
+    for btn in buttons:
+        hover = (btn["x"] <= mx <= btn["x"] + btn["width"] and
+                 btn["y"] <= my <= btn["y"] + btn["height"])
+        bg_color = ARGB.color(220, 80, 80, 80) if hover else ARGB.color(200, 50, 50, 50)
+
+        guiGraphics.fill(
+            btn["x"], btn["y"],
+            btn["x"] + btn["width"], btn["y"] + btn["height"],
+            bg_color
+        )
+        guiGraphics.drawString(
+            mc.font, btn["text"],
+            btn["x"] + int((btn["width"] - mc.font.width(btn["text"])) / 2),
+            btn["y"] + int((btn["height"] - mc.font.lineHeight) / 2),
+            ARGB.color(255, 255, 255, 255)
+        )
+
+# ---- イベント登録 ----
+add_event_listener("key", on_press_key)
+add_event_listener("mouse", on_mouse_click)
+HudRenderCallback.EVENT.register(HudRenderCallback(on_hud_render))

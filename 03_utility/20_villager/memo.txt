@@ -1,0 +1,33 @@
+villagers = [
+    ("ニート", "minecraft:nitwit"),
+    ("求職者", "minecraft:none"),
+    ("道具鍛冶", "minecraft:toolsmith"),
+    ("武器鍛冶", "minecraft:weaponsmith"),
+    ("防具鍛冶", "minecraft:armorer"),
+    ("革細工師", "minecraft:leatherworker"),
+    ("製図家", "minecraft:cartographer"),
+    ("司書", "minecraft:librarian"),
+    ("肉屋", "minecraft:butcher"),
+    ("農民", "minecraft:farmer"),
+    ("矢師", "minecraft:fletcher"),
+    ("羊飼い", "minecraft:shepherd"),
+    ("釣り人", "minecraft:fisherman"),
+    ("聖職者", "minecraft:cleric"),
+    ("石工", "minecraft:mason"),
+]
+
+JOBS = [
+    ("道具鍛冶", "minecraft:smithing_table"),
+    ("武器鍛冶", "minecraft:grindstone"),
+    ("防具鍛冶", "minecraft:blast_furnace"),
+    ("革細工師", "minecraft:cauldron"),
+    ("製図家", "minecraft:cartography_table"),
+    ("司書", "minecraft:lectern"),
+    ("肉屋", "minecraft:smoker"),
+    ("農民", "minecraft:composter"),
+    ("矢師", "minecraft:fletching_table"),
+    ("羊飼い", "minecraft:loom"),
+    ("釣り人", "minecraft:barrel"),
+    ("聖職者", "minecraft:brewing_stand"),
+    ("石工", "minecraft:stonecutter"),
+]

@@ -1,0 +1,229 @@
+from system.pyj.minescript import *
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+ARGB = JavaClass("net.minecraft.util.ARGB")
+HudRenderCallback = JavaClass("net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback")
+BlockPos = JavaClass("net.minecraft.core.BlockPos")  # For biome retrieval
+
+mc = Minecraft.getInstance()
+
+# ---- Flags ----
+show_hud = True   # HUD display toggle
+alive    = True   # Script running flag
+
+# ---- Display text variables ----
+pos_text = ""
+biome_text = ""       # Added biome info
+direction_text = ""
+mob_text = ""
+block_text = ""
+mainhand_text = ""
+offhand_text = ""
+
+# ---- HUD appearance ----
+PADDING_X = 6
+PADDING_Y = 4
+LINE_SPACING = 2
+TEXT_COLOR = ARGB.color(255, 255, 255, 0)  # Yellow
+BG_COLOR   = ARGB.color(160, 0, 0, 0)      # Semi-transparent black
+
+# ---- Stop button (always shown at bottom-right) ----
+STOP_TEXT = "stop"
+STOP_TEXT_COLOR = ARGB.color(255, 255, 255, 255)   # White
+STOP_BG_COLOR   = ARGB.color(220, 180, 0, 0)       # Red tone
+STOP_PAD_X = 6
+STOP_PAD_Y = 2
+STOP_WIDTH  = mc.font.width(STOP_TEXT) + STOP_PAD_X * 2
+STOP_HEIGHT = mc.font.lineHeight + STOP_PAD_Y * 2
+MARGIN = 5
+BOTTOM_EXTRA = 20
+
+# ---- Utility: wrap long text into multiple lines ----
+def wrap_text(text, max_width):
+    wrapped_lines = []
+    current_line = ""
+    for ch in text:
+        w = mc.font.width(current_line + ch)
+        if w > max_width:
+            wrapped_lines.append(current_line)
+            current_line = ch
+        else:
+            current_line += ch
+    if current_line:
+        wrapped_lines.append(current_line)
+    return wrapped_lines
+
+# ---- Utility: get job_id by command name ----
+def get_job_id(cmd: str) -> int | None:
+    wanted = cmd.strip()
+    for job in job_info():
+        # Normalize job.command into a Python string list
+        try:
+            parts = [str(x).strip() for x in job.command]   # Iterable
+        except TypeError:
+            parts = [str(job.command).strip()]              # Non-iterable fallback
+
+        # Exact match with no args (["test"])
+        if parts == [wanted]:
+            return job.job_id
+
+        # First element match (script name) when args exist
+        if parts and parts[0] == wanted:
+            return job.job_id
+
+        # Full string match
+        if " ".join(parts) == wanted:
+            return job.job_id
+    return None
+
+SCRIPT_CMD = "test"   # If launched with \test, then "test"
+
+job_id = get_job_id(SCRIPT_CMD)
+# echo(job_id)
+
+# ---- Event: key press handler ----
+def on_press_key(event):
+    global show_hud
+    if not alive:
+        return
+    # Toggle HUD with F12
+    if event.action == 0 and event.key == 301:
+        show_hud = not show_hud
+        print("HUD toggled:", show_hud)
+
+# ---- Event: mouse click handler ----
+def on_mouse_click(event):
+    global alive
+    if not alive:
+        return
+    if event.action != 1:
+        return
+
+    scale = mc.getWindow().getGuiScale()
+    mx = event.x / scale
+    my = event.y / scale
+
+    win_w = mc.getWindow().getGuiScaledWidth()
+    win_h = mc.getWindow().getGuiScaledHeight()
+    stop_x = win_w - STOP_WIDTH - MARGIN
+    stop_y = win_h - STOP_HEIGHT - MARGIN - BOTTOM_EXTRA
+
+    inside_x = (stop_x <= mx) and (mx <= stop_x + STOP_WIDTH)
+    inside_y = (stop_y <= my) and (my <= stop_y + STOP_HEIGHT)
+    if inside_x and inside_y:
+        alive = False
+        # execute(r"\killjob -1")
+        if job_id is not None:
+            execute(f"\\killjob {job_id}")
+        else:
+            # Debug: visualize normalized commands
+            echo("not found; normalized=" +
+                str([[str(x).strip() for x in (j.command if hasattr(j.command,'__iter__') else [j.command])]
+                    for j in job_info()]))
+
+# ---- Event: HUD rendering ----
+def on_hud_render(guiGraphics, tickDelta):
+    if not alive:
+        return
+
+    if show_hud:
+        x = 10
+        y = 10
+        try:
+            lh = mc.font.lineHeight + LINE_SPACING
+        except:
+            lh = 12
+
+        max_display_width = mc.getWindow().getGuiScaledWidth() - (x + 10)
+        wrapped_lines = []
+
+        for text in (pos_text, biome_text, direction_text, mob_text, block_text, mainhand_text, offhand_text):
+            if text:
+                wrapped_lines.extend(wrap_text(text, max_display_width))
+            else:
+                wrapped_lines.append("")
+
+        maxw = 0
+        for s in wrapped_lines:
+            w = mc.font.width(s)
+            if w > maxw:
+                maxw = w
+        total_h = lh * len(wrapped_lines)
+
+        guiGraphics.fill(
+            x - PADDING_X,
+            y - PADDING_Y,
+            x + maxw + PADDING_X,
+            y + total_h + PADDING_Y,
+            BG_COLOR
+        )
+
+        for i, s in enumerate(wrapped_lines):
+            guiGraphics.drawString(mc.font, s, x, y + lh * i, TEXT_COLOR)
+
+    win_w = mc.getWindow().getGuiScaledWidth()
+    win_h = mc.getWindow().getGuiScaledHeight()
+    stop_x = win_w - STOP_WIDTH - MARGIN
+    stop_y = win_h - STOP_HEIGHT - MARGIN - BOTTOM_EXTRA
+
+    guiGraphics.fill(
+        int(stop_x),
+        int(stop_y),
+        int(stop_x + STOP_WIDTH),
+        int(stop_y + STOP_HEIGHT),
+        STOP_BG_COLOR
+    )
+    text_x = int(stop_x + (STOP_WIDTH  - mc.font.width(STOP_TEXT)) / 2)
+    text_y = int(stop_y + (STOP_HEIGHT - mc.font.lineHeight) / 2)
+    guiGraphics.drawString(mc.font, STOP_TEXT, text_x, text_y, STOP_TEXT_COLOR)
+
+# ---- Update HUD text content ----
+def update_texts():
+    global pos_text, biome_text, direction_text, mob_text, block_text, mainhand_text, offhand_text
+    if not alive:
+        return
+
+    # Position
+    p = player_position()
+    pos_text = f"Pos: {int(p[0])}, {int(p[1])}, {int(p[2])}"
+
+    # Biome
+    pos_obj = BlockPos(int(p[0]), int(p[1]), int(p[2]))
+    biomeHolder = mc.level.getBiome(pos_obj)
+    key = biomeHolder.unwrapKey().get()
+    biome_name = key.location().toString()
+    biome_text = f"Biome: {biome_name}"
+    biome_text = f"{biome_text.replace('minecraft:', '')}"
+
+    # Orientation
+    o = player_orientation()
+    yaw = o[0]
+    pitch = o[1]
+    direction_text = f"Yaw: {int(yaw)}, Pitch: {int(pitch)}"
+
+    # Target mob
+    e = player_get_targeted_entity(20)
+    mob_text = f"Mob: {e.type}" if e else "Mob: None"
+
+    # Target block
+    b = player_get_targeted_block(20)
+    block_text = f"Block: {b.type}" if b else "Block: None"
+    block_text = f"{block_text.replace('minecraft:', '')}"
+
+    # Main hand / Off hand
+    hands = player_hand_items()
+    if hands:
+        mh = hands.main_hand
+        oh = hands.off_hand
+        mainhand_text = f"Main: {mh.item} NBT: {mh.nbt}" if mh else "Main: None"
+        mainhand_text = f"{mainhand_text.replace('minecraft:', '')}"
+        offhand_text = f"Off: {oh.item} NBT: {oh.nbt}" if oh else "Off: None"
+        offhand_text = f"{offhand_text.replace('minecraft:', '')}"
+    else:
+        mainhand_text = "Main: None"
+        offhand_text = "Off: None"
+
+# ---- Event listeners ----
+add_event_listener("key", on_press_key)
+add_event_listener("mouse", on_mouse_click)
+HudRenderCallback.EVENT.register(HudRenderCallback(on_hud_render))
+set_interval(update_texts, 1000)

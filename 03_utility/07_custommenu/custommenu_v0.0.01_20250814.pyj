@@ -1,0 +1,79 @@
+# CustomMenu - Basic Menu UI
+from system.pyj.minescript import *
+
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+ARGB = JavaClass("net.minecraft.util.ARGB")
+HudRenderCallback = JavaClass("net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback")
+
+mc = Minecraft.getInstance()
+
+# ---- Flags ----
+menu_open = False
+current_menu = 0
+
+# ---- Button Properties ----
+MENU_NAMES = ["Menu 1", "Menu 2", "Menu 3"]
+BUTTON_WIDTH = 80
+BUTTON_HEIGHT = 20
+BUTTON_SPACING = 10
+BUTTON_TEXT_COLOR = ARGB.color(255, 255, 255, 255)
+BUTTON_BG_COLOR = ARGB.color(160, 0, 0, 0)
+BUTTON_SELECTED_BG_COLOR = ARGB.color(160, 0, 255, 255)
+
+MARGIN_TOP = 10
+MARGIN_LEFT = 10
+
+# ---- Key Listener (F12 toggle) ----
+def on_key(event):
+    global menu_open
+    if event.action == 0 and event.key == 301:  # F12
+        menu_open = not menu_open
+        echo("Menu toggled: " + str(menu_open))
+
+# ---- Mouse Listener ----
+def on_click(event):
+    global current_menu
+    if not menu_open or event.action != 1:
+        return
+    scale = mc.getWindow().getGuiScale()
+    mx = event.x / scale
+    my = event.y / scale
+
+    for i in range(3):
+        x = MARGIN_LEFT + i * (BUTTON_WIDTH + BUTTON_SPACING)
+        y = MARGIN_TOP
+        if x <= mx <= x + BUTTON_WIDTH and y <= my <= y + BUTTON_HEIGHT:
+            current_menu = i
+            echo(f"Selected: {MENU_NAMES[i]}")
+
+# ---- Render HUD ----
+def on_render(guiGraphics, tickDelta):
+    if not menu_open:
+        return
+
+    win_w = mc.getWindow().getGuiScaledWidth()
+    win_h = mc.getWindow().getGuiScaledHeight()
+    font = mc.font
+
+    # Draw top menu buttons
+    for i in range(3):
+        x = MARGIN_LEFT + i * (BUTTON_WIDTH + BUTTON_SPACING)
+        y = MARGIN_TOP
+        bg_color = BUTTON_SELECTED_BG_COLOR if i == current_menu else BUTTON_BG_COLOR
+        guiGraphics.fill(x, y, x + BUTTON_WIDTH, y + BUTTON_HEIGHT, bg_color)
+        text = MENU_NAMES[i]
+        tx = x + int((BUTTON_WIDTH - font.width(text)) / 2)
+        ty = y + int((BUTTON_HEIGHT - font.lineHeight) / 2)
+        guiGraphics.drawString(font, text, tx, ty, BUTTON_TEXT_COLOR)
+
+    # Draw content panel
+    content_text = f"This is {MENU_NAMES[current_menu]}"
+    cx = MARGIN_LEFT
+    cy = MARGIN_TOP + BUTTON_HEIGHT + 15
+    guiGraphics.fill(cx, cy, win_w - MARGIN_LEFT, cy + 30, ARGB.color(160, 0, 0, 0))
+    guiGraphics.drawString(font, content_text, cx + 10, cy + 8, BUTTON_TEXT_COLOR)
+
+# ---- Register Events ----
+add_event_listener("key", on_key)
+add_event_listener("mouse", on_click)
+HudRenderCallback.EVENT.register(HudRenderCallback(on_render))

@@ -1,0 +1,116 @@
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+ARGB = JavaClass("net.minecraft.util.ARGB")
+HudRenderCallback = JavaClass("net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback")
+
+mc = Minecraft.getInstance()
+show = True
+
+# ---- 表示用テキスト ----
+pos_text = ""
+direction_text = ""
+mob_text = ""
+block_text = ""
+mainhand_text = ""
+offhand_text = ""
+
+# ---- 見た目の調整 ----
+PADDING_X = 6
+PADDING_Y = 4
+LINE_SPACING = 2
+TEXT_COLOR = ARGB.color(255, 255, 255, 0)  # 黄色
+BG_COLOR   = ARGB.color(160, 0, 0, 0)      # 半透明黒
+
+def wrap_text(text, max_width):
+    """文字列をmax_widthに収まるように分割して返す"""
+    wrapped_lines = []
+    current_line = ""
+    for ch in text:
+        if mc.font.width(current_line + ch) > max_width:
+            wrapped_lines.append(current_line)
+            current_line = ch
+        else:
+            current_line += ch
+    if current_line:
+        wrapped_lines.append(current_line)
+    return wrapped_lines
+
+def on_press_key(event):
+    global show
+    if event.action == 0 and event.key == 301:  # F12
+        show = not show
+        print(f"Display toggled: {show}")
+
+def on_hud_render(guiGraphics, tickDelta):
+    if not show:
+        return
+
+    x, y = 10, 10
+    try:
+        lh = mc.font.lineHeight + LINE_SPACING
+    except:
+        lh = 12
+
+    # 改行処理付きの描画テキスト生成
+    max_display_width = mc.getWindow().getGuiScaledWidth() - (x + 10)
+    wrapped_lines = []
+    for s in [pos_text, direction_text, mob_text, block_text, mainhand_text, offhand_text]:
+        if s:
+            wrapped_lines.extend(wrap_text(s, max_display_width))
+        else:
+            wrapped_lines.append("")
+
+    # 背景サイズ計算
+    maxw = 0
+    for s in wrapped_lines:
+        w = mc.font.width(s)
+        if w > maxw:
+            maxw = w
+    total_h = lh * len(wrapped_lines)
+
+    # 背景
+    guiGraphics.fill(
+        x - PADDING_X,
+        y - PADDING_Y,
+        x + maxw + PADDING_X,
+        y + total_h + PADDING_Y,
+        BG_COLOR
+    )
+
+    # 描画
+    for i, s in enumerate(wrapped_lines):
+        guiGraphics.drawString(mc.font, s, x, y + lh * i, TEXT_COLOR)
+
+def update_texts():
+    global pos_text, direction_text, mob_text, block_text, mainhand_text, offhand_text
+
+    # 座標
+    p = player_position()
+    pos_text = f"Pos: {int(p[0])}, {int(p[1])}, {int(p[2])}"
+
+    # 向き
+    o = player_orientation()
+    direction_text = f"Yaw: {int(o[0])}, Pitch: {int(o[1])}"
+
+    # モブ
+    e = player_get_targeted_entity(20)
+    mob_text = f"Mob: {e.type}" if e else "Mob: None"
+
+    # ブロック
+    b = player_get_targeted_block(20)
+    block_text = f"Block: {b.type}" if b else "Block: None"
+
+    # メインハンド・オフハンド
+    hands = player_hand_items()
+    if hands:
+        mh = hands.main_hand
+        oh = hands.off_hand
+        mainhand_text = f"Main: {mh.item} NBT: {mh.nbt}" if mh else "Main: None"
+        offhand_text = f"Off: {oh.item} NBT: {oh.nbt}" if oh else "Off: None"
+    else:
+        mainhand_text = "Main: None"
+        offhand_text = "Off: None"
+
+# イベント登録
+add_event_listener("key", on_press_key)
+HudRenderCallback.EVENT.register(HudRenderCallback(on_hud_render))
+set_interval(update_texts, 1000)

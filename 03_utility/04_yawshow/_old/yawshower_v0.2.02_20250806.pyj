@@ -1,0 +1,97 @@
+from system.pyj.minescript import *
+
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+ARGB = JavaClass("net.minecraft.util.ARGB")
+HudRenderCallback = JavaClass("net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback")
+
+mc = Minecraft.getInstance()
+
+show = True
+hud_text = ""
+
+def safe_float(v):
+    try:
+        return float(v)
+    except:
+        log(f"[WARN] Failed to convert to float: {v}")
+        return 0.0
+
+def safe_int(v):
+    try:
+        return int(float(v))
+    except:
+        log(f"[WARN] Failed to convert to int: {v}")
+        return 0
+
+def update():
+    global hud_text
+
+    orientation = player_orientation()
+    yaw = safe_float(orientation[0])
+    pitch = safe_float(orientation[1])
+
+    pos = player_position()
+    x = safe_int(pos[0])
+    y = safe_int(pos[1])
+    z = safe_int(pos[2])
+    pos_str = f"📍Pos: {x}, {y}, {z} | 🎯Yaw: {int(yaw)}, Pitch: {int(pitch)}"
+
+    entity_info = ""
+    block_info = ""
+
+    e = player_get_targeted_entity(20)
+    if e:
+        ex = safe_int(e.position[0])
+        ey = safe_int(e.position[1])
+        ez = safe_int(e.position[2])
+        etype = e.type
+        if etype.startswith("entity.minecraft."):
+            etype = etype[len("entity.minecraft."):]
+        entity_info = f"👾 Mob: {etype} @ ({ex}, {ey}, {ez})"
+
+    b = player_get_targeted_block(20)
+    if b:
+        bx = safe_int(b.position[0])
+        by = safe_int(b.position[1])
+        bz = safe_int(b.position[2])
+        btype = b.type
+        if btype.startswith("minecraft:"):
+            btype = btype[len("minecraft:"):]
+        block_info = f"🧱 Block: {btype} @ ({bx}, {by}, {bz})"
+
+    extra = ""
+    if entity_info and block_info:
+        extra = f"{entity_info} | {block_info}"
+    elif entity_info:
+        extra = entity_info
+    elif block_info:
+        extra = block_info
+
+    full_line = pos_str
+    if extra:
+        full_line += f" | {extra}"
+
+    hud_text = full_line
+
+def on_press_key(event):
+    global show
+    if event.action == 0 and event.key == 301:  # F12 key to toggle display
+        show = not show
+        print(f"HUD show toggled: {show}")
+
+def on_hud_render(guiGraphics, tickDeltaManager):
+    if not show:
+        return
+
+    x = 5
+    y = 5
+    color = ARGB.color(255, 0, 255, 0)  # Opaque green
+
+    guiGraphics.drawString(mc.font, hud_text, x, y, color)
+
+# イベント登録
+add_event_listener("key", on_press_key)
+HudRenderCallback.EVENT.register(HudRenderCallback(on_hud_render))
+
+# 1秒ごとに情報更新
+set_interval(update, 1000)

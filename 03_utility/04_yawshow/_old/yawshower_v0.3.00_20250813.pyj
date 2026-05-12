@@ -1,0 +1,209 @@
+from system.pyj.minescript import *
+
+Minecraft = JavaClass("net.minecraft.client.Minecraft")
+ARGB = JavaClass("net.minecraft.util.ARGB")
+HudRenderCallback = JavaClass("net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback")
+BlockPos = JavaClass("net.minecraft.core.BlockPos")
+
+mc = Minecraft.getInstance()
+
+# ---- Flags ----
+show_hud = True
+pos_enabled = True
+alive = True
+
+# ---- HUD text variables ----
+version_text = ""
+pos_text = ""
+biome_text = ""
+direction_text = ""
+mob_text = ""
+block_text = ""
+mainhand_text = ""
+offhand_text = ""
+
+# ---- Appearance ----
+PADDING_X = 6
+PADDING_Y = 4
+LINE_SPACING = 2
+TEXT_COLOR = ARGB.color(255, 255, 255, 0)
+BG_COLOR   = ARGB.color(160, 0, 0, 0)
+
+# ---- STOP Button (right-bottom) ----
+STOP_TEXT = "STOP"
+STOP_TEXT_COLOR = ARGB.color(255, 255, 255, 255)
+STOP_BG_COLOR   = ARGB.color(220, 180, 0, 0)
+STOP_PAD_X = 6
+STOP_PAD_Y = 2
+STOP_WIDTH  = mc.font.width(STOP_TEXT) + STOP_PAD_X * 2
+STOP_HEIGHT = mc.font.lineHeight + STOP_PAD_Y * 2
+
+# ---- POS Button (left-bottom) ----
+POS_TEXT = "POS"
+POS_TEXT_COLOR = ARGB.color(255, 255, 255, 255)
+POS_BG_COLOR_ON  = ARGB.color(220, 0, 180, 0)   # 緑
+POS_BG_COLOR_OFF = ARGB.color(220, 180, 0, 0)   # 赤
+POS_PAD_X = 6
+POS_PAD_Y = 2
+POS_WIDTH  = mc.font.width(POS_TEXT) + POS_PAD_X * 2
+POS_HEIGHT = mc.font.lineHeight + POS_PAD_Y * 2
+
+MARGIN = 5
+BOTTOM_EXTRA = 20
+
+# ---- Job ID ----
+SCRIPT_CMD = "test"
+def get_job_id(cmd: str) -> int | None:
+    wanted = cmd.strip()
+    for job in job_info():
+        try:
+            parts = [str(x).strip() for x in job.command]
+        except TypeError:
+            parts = [str(job.command).strip()]
+        if parts == [wanted] or (parts and parts[0] == wanted) or " ".join(parts) == wanted:
+            return job.job_id
+    return None
+
+job_id = get_job_id(SCRIPT_CMD)
+
+# ---- Utility: wrap long text ----
+def wrap_text(text, max_width):
+    wrapped_lines = []
+    current_line = ""
+    for ch in text:
+        if mc.font.width(current_line + ch) > max_width:
+            wrapped_lines.append(current_line)
+            current_line = ch
+        else:
+            current_line += ch
+    if current_line:
+        wrapped_lines.append(current_line)
+    return wrapped_lines
+
+# ---- Key: F12 toggle ----
+def on_press_key(event):
+    global show_hud
+    if not alive:
+        return
+    if event.action == 0 and event.key == 301:  # F12
+        show_hud = not show_hud
+        echo("HUD toggled: " + str(show_hud))
+
+# ---- Mouse click: buttons ----
+def on_mouse_click(event):
+    global alive, pos_enabled
+    if not alive or event.action != 1 or not show_hud:
+        return
+    scale = mc.getWindow().getGuiScale()
+    mx = event.x / scale
+    my = event.y / scale
+    win_w = mc.getWindow().getGuiScaledWidth()
+    win_h = mc.getWindow().getGuiScaledHeight()
+
+    # STOP
+    stop_x = win_w - STOP_WIDTH - MARGIN
+    stop_y = win_h - STOP_HEIGHT - MARGIN - BOTTOM_EXTRA
+    if stop_x <= mx <= stop_x + STOP_WIDTH and stop_y <= my <= stop_y + STOP_HEIGHT:
+        alive = False
+        if job_id is not None:
+            execute(f"\\killjob {job_id}")
+        else:
+            echo("Job ID not found")
+
+    # POS
+    pos_x = MARGIN
+    pos_y = win_h - POS_HEIGHT - MARGIN - BOTTOM_EXTRA
+    if pos_x <= mx <= pos_x + POS_WIDTH and pos_y <= my <= pos_y + POS_HEIGHT:
+        pos_enabled = not pos_enabled
+        echo("POS toggled: " + str(pos_enabled))
+
+# ---- HUD render ----
+def on_hud_render(guiGraphics, tickDelta):
+    if not alive or not show_hud:
+        return
+
+    x, y = 10, 10
+    lh = mc.font.lineHeight + LINE_SPACING
+    maxw = 0
+    max_display_width = mc.getWindow().getGuiScaledWidth() - (x + 10)
+    wrapped_lines = []
+
+    # 表示順：version → pos（ON時）→ その他
+    wrapped_lines.extend(wrap_text(version_text, max_display_width))
+    if pos_enabled and pos_text:
+        wrapped_lines.extend(wrap_text(pos_text, max_display_width))
+
+    for text in (biome_text, direction_text, mob_text, block_text, mainhand_text, offhand_text):
+        if text:
+            wrapped_lines.extend(wrap_text(text, max_display_width))
+        else:
+            wrapped_lines.append("")
+
+    for s in wrapped_lines:
+        maxw = max(maxw, mc.font.width(s))
+    total_h = lh * len(wrapped_lines)
+
+    guiGraphics.fill(x - PADDING_X, y - PADDING_Y, x + maxw + PADDING_X, y + total_h + PADDING_Y, BG_COLOR)
+    for i, s in enumerate(wrapped_lines):
+        guiGraphics.drawString(mc.font, s, x, y + i * lh, TEXT_COLOR)
+
+    win_w = mc.getWindow().getGuiScaledWidth()
+    win_h = mc.getWindow().getGuiScaledHeight()
+
+    # STOPボタン
+    stop_x = win_w - STOP_WIDTH - MARGIN
+    stop_y = win_h - STOP_HEIGHT - MARGIN - BOTTOM_EXTRA
+    guiGraphics.fill(stop_x, stop_y, stop_x + STOP_WIDTH, stop_y + STOP_HEIGHT, STOP_BG_COLOR)
+    guiGraphics.drawString(mc.font, STOP_TEXT,
+        stop_x + int((STOP_WIDTH - mc.font.width(STOP_TEXT)) / 2),
+        stop_y + int((STOP_HEIGHT - mc.font.lineHeight) / 2),
+        STOP_TEXT_COLOR
+    )
+
+    # POSボタン
+    pos_x = MARGIN
+    pos_y = win_h - POS_HEIGHT - MARGIN - BOTTOM_EXTRA
+    pos_bg_color = POS_BG_COLOR_ON if pos_enabled else POS_BG_COLOR_OFF
+    guiGraphics.fill(pos_x, pos_y, pos_x + POS_WIDTH, pos_y + POS_HEIGHT, pos_bg_color)
+    guiGraphics.drawString(mc.font, POS_TEXT,
+        pos_x + int((POS_WIDTH - mc.font.width(POS_TEXT)) / 2),
+        pos_y + int((POS_HEIGHT - mc.font.lineHeight) / 2),
+        POS_TEXT_COLOR
+    )
+
+# ---- Update text data ----
+def update_texts():
+    global version_text, pos_text, biome_text, direction_text, mob_text, block_text, mainhand_text, offhand_text
+    if not alive:
+        return
+
+    v = version_info()
+    version_text = "VersionInfo : MC " + str(v.minecraft) + " / MS " + str(v.minescript) + " / " + str(v.mod_loader) + " / " + str(v.pyjinn)
+
+    p = player_position()
+    pos_text = f"Pos: {int(p[0])}, {int(p[1])}, {int(p[2])}"
+    pos_obj = BlockPos(int(p[0]), int(p[1]), int(p[2]))
+    biomeHolder = mc.level.getBiome(pos_obj)
+    biome_name = biomeHolder.unwrapKey().get().location().toString().replace("minecraft:", "")
+    biome_text = f"Biome: {biome_name}"
+    yaw, pitch = player_orientation()
+    direction_text = f"Yaw: {int(yaw)}, Pitch: {int(pitch)}"
+    e = player_get_targeted_entity(20)
+    mob_text = f"Mob: {e.type}" if e else "Mob: None"
+    b = player_get_targeted_block(20)
+    block_text = f"Block: {b.type.replace('minecraft:', '')}" if b else "Block: None"
+    hands = player_hand_items()
+    if hands:
+        mh = hands.main_hand
+        oh = hands.off_hand
+        mainhand_text = f"Main: {mh.item.replace('minecraft:', '')}" if mh else "Main: None"
+        offhand_text = f"Off: {oh.item.replace('minecraft:', '')}" if oh else "Off: None"
+    else:
+        mainhand_text = "Main: None"
+        offhand_text = "Off: None"
+
+# ---- Register events ----
+add_event_listener("key", on_press_key)
+add_event_listener("mouse", on_mouse_click)
+HudRenderCallback.EVENT.register(HudRenderCallback(on_hud_render))
+set_interval(update_texts, 1000)
