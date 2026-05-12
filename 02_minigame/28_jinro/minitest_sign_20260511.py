@@ -9,18 +9,36 @@ y = math.floor(p.position[1])
 z = math.floor(p.position[2])
 
 def cmd(c):
-    print(c)
+    # print(c)
     m.execute(c)
 
 cmd('kill @e[type=interaction,tag=test]')
 
+# cmd(
+#     f'summon interaction '
+#     f'{x+0.5} {y+1} {z+2} '
+#     '{'
+#     'width:1f,'
+#     'height:1f,'
+#     'response:1b,'
+#     'Tags:["test"]'
+#     '}'
+# )
+
+# 看板
+cmd(
+    f'setblock '
+    f'{x} {y+1} {z+2} '
+    f'oak_sign[rotation=8]'
+)
+
+# interaction
 cmd(
     f'summon interaction '
-    f'{x+0.5} {y+1} {z+2} '
+    f'{x+0.5} {y+1.5} {z+1.9} '
     '{'
-    'width:1f,'
-    'height:1f,'
-    'response:1b,'
+    'width:0.8f,'
+    'height:0.8f,'
     'Tags:["test"]'
     '}'
 )
@@ -29,7 +47,7 @@ print("RIGHT CLICK")
 
 while True:
 
-    # クリック検知
+    # クリック
     cmd(
         'execute as '
         '@e['
@@ -42,14 +60,13 @@ while True:
 
     # リセット
     cmd(
-        'data remove entity '
+        'execute as '
         '@e['
         'type=interaction,'
         'tag=test,'
-        'nbt={interaction:{}},'
-        'limit=1'
+        'nbt={interaction:{}}'
         '] '
-        'interaction'
+        'run data remove entity @s interaction'
     )
 
     time.sleep(0.05)
