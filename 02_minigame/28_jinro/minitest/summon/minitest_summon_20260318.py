@@ -41,7 +41,7 @@ m.execute(
 )
 
 # =========================
-# ③ 固定（←ここ修正）
+# ③ 固定
 # =========================
 m.execute(
     "execute as @e[type=minecraft:skeleton] run data merge entity @s {NoAI:1b}"
