@@ -1,0 +1,51 @@
+```
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+```bash
+source "$HOME/.cargo/env"
+```
+
+その後、確認：
+
+```bash
+cargo --version
+```
+
+こんな感じで出ればOKです：
+
+```bash
+cargo 1.xx.x
+```
+
+毎回 `source` したくない場合は、zsh に恒久設定します。
+
+これを実行：
+
+```bash
+echo 'source "$HOME/.cargo/env"' >> ~/.zshrc
+```
+
+反映：
+
+```bash
+source ~/.zshrc
+```
+
+これで今後 `cargo` が常に使えるようになります。
+
+# Clone the repository
+git clone https://github.com/playit-cloud/playit-agent.git
+cd playit-agent
+
+# Build and run the release version
+cargo run --release
+
+
+
+サーバーを起動しているターミナル側で、Minecraft内ではなく Mac のターミナルに以下を入力してください。
+
+```
+op あなたのMinecraftユーザー名
+```
+
