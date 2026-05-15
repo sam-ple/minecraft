@@ -42,10 +42,199 @@ cd playit-agent
 cargo run --release
 
 
-
 サーバーを起動しているターミナル側で、Minecraft内ではなく Mac のターミナルに以下を入力してください。
 
-```
+```bash
 op あなたのMinecraftユーザー名
 ```
+
+例：
+
+```bash
+op crocado
+```
+
+成功するとこんな表示が出ます：
+
+```text
+Made crocadooo a server operator
+```
+
+* * * * * * *
+
+Minecraft で Ping を見る方法はいくつかあります。
+
+## 一番簡単
+
+サーバー一覧画面で、サーバー名の右にあるアンテナマークへカーソルを合わせる。
+
+すると：
+
+```text
+Ping: 22ms
+```
+
+みたいに表示されます。
+
+---
+
+## サーバー参加中に見る方法（Java版）
+
+`Tab` キーを押すと、プレイヤー一覧の右側に接続品質アイコンが出ます。
+
+Paper / Spigot 系なら、数値Pingが表示されることもあります。
+
+---
+
+## 数値で正確に見る（おすすめ）
+
+Paper サーバーならプラグインを入れると簡単です。
+
+例えば：
+
+* EssentialsX
+* TAB
+* MiniMOTD
+
+など。
+
+特に EssentialsX は定番です。
+
+導入後：
+
+```text
+/ping
+```
+
+で確認できることがあります。
+
+---
+
+## Ping の意味
+
+* 低いほど快適
+* 単位は ms（ミリ秒）
+
+目安：
+
+| Ping      | 状態    |
+| --------- | ----- |
+| 0〜30ms    | 超快適   |
+| 30〜60ms   | 快適    |
+| 60〜100ms  | 普通    |
+| 100〜150ms | 少しラグ  |
+| 150ms以上   | 結構ラグい |
+
+22ms はかなり良い数値です。
+
+* * * * * *
+
+はい、EssentialsX を入れると、他プレイヤーの Ping も確認できます。
+
+よく使うのは：
+
+```text
+/ping
+```
+
+→ 自分の Ping
+
+```text
+/ping プレイヤー名
+```
+
+例：
+
+```text
+/ping Steve
+```
+
+→ Steve の Ping を表示
+
+---
+
+## EssentialsX の入れ方（Paper向け）
+
+### 1. ダウンロード
+
+公式：
+
+[EssentialsX Downloads](https://essentialsx.net/downloads.html?utm_source=chatgpt.com)
+
+必要なのは普通はこれだけ：
+
+* EssentialsX
+
+（Spawn や Chat は後からでもOK）
+
+---
+
+### 2. plugins フォルダへ入れる
+
+サーバーフォルダの：
+
+```text
+plugins
+```
+
+に `.jar` を入れる。
+
+例：
+
+```text
+MinecraftServer/plugins/EssentialsX-X.X.X.jar
+```
+
+---
+
+### 3. サーバー再起動
+
+```text
+stop
+```
+
+して再起動。
+
+起動ログに：
+
+```text
+[Essentials] Enabling Essentials
+```
+
+が出れば成功。
+
+---
+
+## Ping が見れない場合
+
+最近の EssentialsX は `/ping` が入っていない構成もあります。
+
+その場合は：
+
+* TAB
+* CMI
+* PingPlugin
+
+などを追加します。
+
+軽量ならこれ系が人気：
+
+[PingPlugin Spigot Page](https://www.spigotmc.org/resources/ping.11360/?utm_source=chatgpt.com)
+
+---
+
+## 個人的には
+
+人数少なめの友達サーバーなら、
+
+* EssentialsX
+* ViaVersion
+* spark
+
+この3つだけでもかなり快適です。
+
+特に spark は「重い原因」を見るのに超便利です。
+
+
+
 
