@@ -109,15 +109,15 @@ def flatten_area():
     m.execute(f"fill {x-25} {y+10} {z-25} {x+25} {y+20} {z+25} minecraft:air")
 
     # 猫処理
-    m.execute(f"tp @e[tag=sitting_cat,x={x-25},y={y-5},z={z-25},dx=50,dy=10,dz=50] ~ ~20 ~")
-    m.execute(f"kill @e[tag=sitting_cat,x={x-25},y={y+15},z={z-25},dx=50,dy=20,dz=50]")
+    m.execute(f"minecraft:tp @e[tag=sitting_cat,x={x-25},y={y-5},z={z-25},dx=50,dy=10,dz=50] ~ ~20 ~")
+    m.execute(f"minecraft:kill @e[tag=sitting_cat,x={x-25},y={y+15},z={z-25},dx=50,dy=20,dz=50]")
 
     # アイテム・額縁削除
-    m.execute(f"kill @e[type=item,x={x-25},y={y-5},z={z-25},dx=50,dy=30,dz=50]")
-    m.execute(f"kill @e[type=item_frame,x={x-25},y={y-5},z={z-25},dx=50,dy=30,dz=50]")
+    m.execute(f"minecraft:kill @e[type=item,x={x-25},y={y-5},z={z-25},dx=50,dy=30,dz=50]")
+    m.execute(f"minecraft:kill @e[type=item_frame,x={x-25},y={y-5},z={z-25},dx=50,dy=30,dz=50]")
 
     # 大型プレイヤーヘッド削除
-    m.execute('kill @e[tag=big_player_head]')
+    m.execute('minecraft:kill @e[tag=big_player_head]')
 
     # スポーン設定
     m.execute(f"setworldspawn {x} {y} {z}")
@@ -212,13 +212,13 @@ def place_all_chests_horizontal():
 
                 ench = '[enchantments={"minecraft:efficiency":5,"minecraft:fortune":3}]'
 
-                m.execute(f'item replace block {cx} {cy} {cz} container.{slot} with minecraft:diamond_pickaxe{ench} 1')
-                m.execute(f'item replace block {cx+1} {cy} {cz} container.{slot} with minecraft:diamond_pickaxe{ench} 1')
+                m.execute(f'minecraft:item replace block {cx} {cy} {cz} container.{slot} with minecraft:diamond_pickaxe{ench} 1')
+                m.execute(f'minecraft:item replace block {cx+1} {cy} {cz} container.{slot} with minecraft:diamond_pickaxe{ench} 1')
 
             else:
 
-                m.execute(f'item replace block {cx} {cy} {cz} container.{slot} with minecraft:{item_id} {count}')
-                m.execute(f'item replace block {cx+1} {cy} {cz} container.{slot} with minecraft:{item_id} {count}')
+                m.execute(f'minecraft:item replace block {cx} {cy} {cz} container.{slot} with minecraft:{item_id} {count}')
+                m.execute(f'minecraft:item replace block {cx+1} {cy} {cz} container.{slot} with minecraft:{item_id} {count}')
 
         m.execute(
             f'summon minecraft:item_frame {cx} {cy} {cz+1} '
