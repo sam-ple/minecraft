@@ -212,13 +212,13 @@ def place_all_chests_horizontal():
 
                 ench = '[enchantments={"minecraft:efficiency":5,"minecraft:fortune":3}]'
 
-                m.execute(f'item replace block {cx} {cy} {cz} container.{slot} with minecraft:diamond_pickaxe{ench} 1')
-                m.execute(f'item replace block {cx+1} {cy} {cz} container.{slot} with minecraft:diamond_pickaxe{ench} 1')
+                m.execute(f'minecraft:item replace block {cx} {cy} {cz} container.{slot} with minecraft:diamond_pickaxe{ench} 1')
+                m.execute(f'minecraft:item replace block {cx+1} {cy} {cz} container.{slot} with minecraft:diamond_pickaxe{ench} 1')
 
             else:
 
-                m.execute(f'item replace block {cx} {cy} {cz} container.{slot} with minecraft:{item_id} {count}')
-                m.execute(f'item replace block {cx+1} {cy} {cz} container.{slot} with minecraft:{item_id} {count}')
+                m.execute(f'minecraft:item replace block {cx} {cy} {cz} container.{slot} with minecraft:{item_id} {count}')
+                m.execute(f'minecraft:item replace block {cx+1} {cy} {cz} container.{slot} with minecraft:{item_id} {count}')
 
         m.execute(
             f'summon minecraft:item_frame {cx} {cy} {cz+1} '
