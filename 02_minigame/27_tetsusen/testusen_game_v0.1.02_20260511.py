@@ -361,13 +361,13 @@ def main():
 
         if not results:
 
-            m.chat("§cNo results.")
+            m.chat("No results.")
             return
 
         # タイム順ソート
         results.sort(key=lambda r: r["time_seconds"])
 
-        m.chat("§6========== RESULT ==========")
+        m.chat("========== RESULT ==========")
 
         for rank, r in enumerate(results, start=1):
 
@@ -375,9 +375,9 @@ def main():
             time_str = r["time_display"]
 
             m.chat(
-                f"§e#{rank} §a{player} §f- §b{time_str}"
+                f"{rank} {player} - {time_str}"
             )
 
-        m.chat("§6============================")
+        m.chat("============================")
 
 main()
