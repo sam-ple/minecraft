@@ -1,19 +1,45 @@
+# on right click on stone button:
+#     cancel event
+# 
+#     set {_shulker} to block south of event-block
+# 
+#     if {_shulker} is red shulker box:
+#         send "赤色のシェルカーを選択" to player
+#     else if {_shulker} is blue shulker box:
+#         send "青色のシェルカーを選択" to player
+#     else if {_shulker} is green shulker box:
+#         send "緑色のシェルカーを選択" to player
+#     else if {_shulker} is yellow shulker box:
+#         send "黄色のシェルカーを選択" to player
+#     else if {_shulker} is purple shulker box:
+#         send "紫色のシェルカーを選択" to player
+#     else:
+#         stop
+# 
+#     set event-block to air
+
 on right click on stone button:
     cancel event
 
     set {_shulker} to block south of event-block
 
     if {_shulker} is red shulker box:
-        send "赤色のシェルカーを選択" to player
+        set {_color} to "red"
     else if {_shulker} is blue shulker box:
-        send "青色のシェルカーを選択" to player
+        set {_color} to "blue"
     else if {_shulker} is green shulker box:
-        send "緑色のシェルカーを選択" to player
+        set {_color} to "green"
     else if {_shulker} is yellow shulker box:
-        send "黄色のシェルカーを選択" to player
+        set {_color} to "yellow"
     else if {_shulker} is purple shulker box:
-        send "紫色のシェルカーを選択" to player
+        set {_color} to "purple"
     else:
         stop
 
+    # プレイヤーと色を保存
+    set {tetsusen.station::%player%} to {_color}
+
+    # ボタン削除
     set event-block to air
+
+    send "%player% は %{_color}%色の焼き場を選択しました。" to all players
