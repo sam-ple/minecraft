@@ -1,0 +1,63 @@
+# ============================================================
+# TETSUSEN - STATION SELECT + IRON COUNT
+# ============================================================
+
+on right click on stone button:
+    cancel event
+
+    set {_shulker} to block south of event-block
+
+    if {_shulker} is red shulker box:
+        set {_color} to "red"
+    else if {_shulker} is blue shulker box:
+        set {_color} to "blue"
+    else if {_shulker} is green shulker box:
+        set {_color} to "green"
+    else if {_shulker} is yellow shulker box:
+        set {_color} to "yellow"
+    else if {_shulker} is purple shulker box:
+        set {_color} to "purple"
+    else:
+        stop
+
+    # プレイヤーと色を紐付け
+    set {tetsusen.station::%player%} to {_color}
+
+    # このプレイヤーが選択したシェルカーを保存
+    set {tetsusen.shulker::%player%} to {_shulker}
+
+    # ボタン削除
+    set event-block to air
+
+    # スコアボード作成
+    execute console command "scoreboard objectives add iron_count dummy"
+
+    # 初期値
+    execute console command "scoreboard players set %player% iron_count 0"
+
+    # サイドバー表示
+    execute console command "scoreboard objectives setdisplay sidebar iron_count"
+
+    send "%player% が %{_color}%色の焼き場を選択しました。" to all players
+
+
+# ============================================================
+# IRON COUNT
+# ============================================================
+
+every 1 second:
+
+    loop all players:
+
+        if {tetsusen.shulker::%loop-player%} is set:
+
+            set {_shulker} to {tetsusen.shulker::%loop-player%}
+
+            set {_iron} to 0
+
+            loop items in inventory of {_shulker}:
+
+                if loop-item is iron ingot:
+                    add amount of loop-item to {_iron}
+
+            execute console command "scoreboard players set %loop-player% iron_count %{_iron}%"
