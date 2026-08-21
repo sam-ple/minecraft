@@ -6,7 +6,7 @@
 # Minecraft Java Edition + MineScript
 #
 # File
-#   tetsusen_base.py : 鉄千ゲーム用ステージ生成
+#   tetsusen_stage.py : 鉄千ゲーム用ステージ生成
 #
 # Features
 #   ・フィールド整地
@@ -70,17 +70,22 @@ def flatten_area():
     # gamerule compatibility
     # --------------------------------------------------------
 
-    v = m.version_info()
-    print("Minecraft version:", v.minecraft)
+    # v = m.version_info()
+    # print("Minecraft version:", v.minecraft)
 
-    if v.minecraft == "1.21.11":
-        m.execute(
-            "gamerule send_command_feedback false"
-        )
-    else:
-        m.execute(
-            "gamerule sendCommandFeedback false"
-        )
+    # if v.minecraft == "1.21.11":
+    #     m.execute(
+    #         "gamerule send_command_feedback false"
+    #     )
+    # else:
+    #     m.execute(
+    #         "gamerule sendCommandFeedback false"
+    #     )
+
+    m.execute(
+        "gamerule send_command_feedback false"
+    )
+
 
     # --------------------------------------------------------
     # Player orientation
