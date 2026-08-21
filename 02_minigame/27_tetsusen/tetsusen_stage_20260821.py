@@ -207,19 +207,12 @@ def build_furnace_system(offset_x, color):
     #
     # Shulker is facing north.
     # Button is placed directly in front of it.
-    #
-    #          NORTH
-    #            ↑
-    #
-    #         [BUTTON]
-    #         [SHULKER]
-    #
     # --------------------------------------------------------
 
     m.execute(
         f"setblock "
-        f"{base_x} {base_y+1} {base_z-1} "
-        f"minecraft:stone_button[facing=south]"
+        f"{base_x} {base_y} {base_z-1} "
+        f"minecraft:stone_button[facing=north]"
     )
 
     # --------------------------------------------------------
