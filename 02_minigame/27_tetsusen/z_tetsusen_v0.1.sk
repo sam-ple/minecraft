@@ -1,0 +1,37 @@
+# ============================================================
+# TETSUSEN - STATION SELECT TEST
+# ============================================================
+
+on right click on stone button:
+
+    # ボタンの北側にあるブロックを確認
+    set {_shulker} to block north of event-block
+
+    # シェルカーでなければ終了
+    if {_shulker} is not a shulker box:
+        stop
+
+    # シェルカーの種類を取得
+    set {_type} to type of {_shulker}
+
+    # 色を判定
+    if {_type} is red shulker box:
+        set {_color} to "赤"
+
+    else if {_type} is blue shulker box:
+        set {_color} to "青"
+
+    else if {_type} is green shulker box:
+        set {_color} to "緑"
+
+    else if {_type} is yellow shulker box:
+        set {_color} to "黄"
+
+    else if {_type} is purple shulker box:
+        set {_color} to "紫"
+
+    else:
+        stop
+
+    # 結果表示
+    send "%player% が %{_color}%色のシェルカーを選択しました。" to all players
