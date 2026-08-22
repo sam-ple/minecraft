@@ -1,6 +1,6 @@
 # ============================================================
 # TETSUSEN GAME SYSTEM
-# Version : v0.2.00
+# Version : v0.2.03
 #
 # Commands
 #   /tetsusen set
@@ -34,7 +34,6 @@ on right click on stone button:
     # --------------------------------------------------------
 
     if {tetsusen.setup} is not true:
-
         stop
 
 
@@ -49,12 +48,12 @@ on right click on stone button:
 
 
     # --------------------------------------------------------
-    # ボタン南側のシェルカー
+    # ボタンの南側にあるシェルカーを取得
     #
-    # MineScript側:
+    # MineScript:
     #
-    #   [BUTTON]
-    #   [SHULKER]
+    #   button  = Z-1
+    #   shulker = Z
     #
     # --------------------------------------------------------
 
@@ -91,7 +90,7 @@ on right click on stone button:
 
 
     # --------------------------------------------------------
-    # プレイヤーが既に選択済み
+    # プレイヤーがすでに選択済み
     # --------------------------------------------------------
 
     if {tetsusen.station::%player%} is set:
@@ -101,7 +100,7 @@ on right click on stone button:
 
 
     # --------------------------------------------------------
-    # その色が既に使用されている
+    # その色がすでに使用されている
     # --------------------------------------------------------
 
     if {tetsusen.station.player::%{_color}%} is set:
@@ -111,14 +110,52 @@ on right click on stone button:
 
 
     # ========================================================
-    # PLAYER / STATION REGISTER
+    # SAVE
     # ========================================================
 
+    # プレイヤー → 色
     set {tetsusen.station::%player%} to {_color}
 
+    # 色 → プレイヤー
     set {tetsusen.station.player::%{_color}%} to player
 
+    # プレイヤー → シェルカー
     set {tetsusen.shulker::%player%} to {_shulker}
+
+
+    # ========================================================
+    # NORMAL PLAYER HEAD LOCATION
+    #
+    # 元MineScript set2 と同じ
+    #
+    # X     = shulker X
+    # Y + 1 = shulker Y + 1
+    # Z     = shulker Z
+    # ========================================================
+
+    set {_headLocation} to location of {_shulker}
+
+    add 1 to y-coordinate of {_headLocation}
+
+    set {tetsusen.head::%player%} to {_headLocation}
+
+
+    # ========================================================
+    # BIG PLAYER HEAD LOCATION
+    #
+    # 元MineScript set3 と同じ
+    #
+    # X     = shulker X
+    # Y +10 = shulker Y + 10
+    # Z + 2 = shulker Z + 2
+    # ========================================================
+
+    set {_bigLocation} to location of {_shulker}
+
+    add 10 to y-coordinate of {_bigLocation}
+    add 2 to z-coordinate of {_bigLocation}
+
+    set {tetsusen.bighead.location::%player%} to {_bigLocation}
 
 
     # ========================================================
@@ -130,59 +167,27 @@ on right click on stone button:
 
     # ========================================================
     # NORMAL PLAYER HEAD
-    #
-    # 元MineScript set2 と同じ
-    #
-    # X     = shulker X
-    # Y + 2 = shulker Y
-    # Z     = shulker Z
     # ========================================================
 
-    set {_headX} to x-coordinate of location of {_shulker}
-    set {_headY} to y-coordinate of location of {_shulker}
-    set {_headZ} to z-coordinate of location of {_shulker}
+    set block at {_headLocation} to player head
 
-    add 2 to {_headY}
-
-
-    # --------------------------------------------------------
-    # プレイヤーヘッド
-    #
-    # single quote を使ってSkriptの文字列衝突を回避
-    # --------------------------------------------------------
-
-    execute console command "setblock %{_headX}% %{_headY}% %{_headZ}% minecraft:player_head[rotation=0]{profile:'%player%'} replace"
+    set skull owner of block at {_headLocation} to player
 
 
     # ========================================================
     # BIG PLAYER HEAD
-    #
-    # 元MineScript set3 と同じ
-    #
-    # X     = shulker X
-    # Y +10 = shulker Y
-    # Z + 2 = shulker Z
-    # Scale = 6,6,1
     # ========================================================
 
-    set {_bigX} to x-coordinate of location of {_shulker}
-    set {_bigY} to y-coordinate of location of {_shulker}
-    set {_bigZ} to z-coordinate of location of {_shulker}
+    set {_bigX} to x-coordinate of {_bigLocation}
+    set {_bigY} to y-coordinate of {_bigLocation}
+    set {_bigZ} to z-coordinate of {_bigLocation}
 
-    add 10 to {_bigY}
-    add 2 to {_bigZ}
-
-
-    # --------------------------------------------------------
-    # 巨大プレイヤーヘッド
-    # --------------------------------------------------------
-
-    execute console command "summon minecraft:item_display %{_bigX}% %{_bigY}% %{_bigZ}% {item:{id:'minecraft:player_head',count:1,components:{'minecraft:profile':{name:'%player%'}}},billboard:'fixed',Tags:['tetsusen_big_head']}"
+    execute console command "summon minecraft:item_display %{_bigX}% %{_bigY}% %{_bigZ}% {item:{id:""minecraft:player_head"",count:1,components:{""minecraft:profile"":{name:""%player%""}}},billboard:""fixed"",Tags:[""tetsusen_big_head""]}"
 
 
-    # --------------------------------------------------------
-    # Scale 6,6,1
-    # --------------------------------------------------------
+    # ========================================================
+    # BIG HEAD SCALE
+    # ========================================================
 
     execute console command "data modify entity @e[tag=tetsusen_big_head,x=%{_bigX}%,y=%{_bigY}%,z=%{_bigZ}%,distance=..1,limit=1] transformation.scale set value [6f,6f,1f]"
 
@@ -211,50 +216,46 @@ command /tetsusen <text> [<number>]:
 
         if arg-1 is "set":
 
-            # ------------------------------------------------
-            # ゲーム中なら不可
-            # ------------------------------------------------
-
             if {tetsusen.running} is true:
 
                 send "&cゲーム中はSETできません。"
                 stop
 
 
-            # ------------------------------------------------
-            # 既存の選択状態を消去
-            # ------------------------------------------------
+            # -----------------------------------------------
+            # 既にSET済み
+            # -----------------------------------------------
 
-            delete {tetsusen.station::*}
-            delete {tetsusen.station.player::*}
-            delete {tetsusen.shulker::*}
+            if {tetsusen.setup} is true:
+
+                send "&eすでに焼き場選択モードです。"
+                stop
+
+
+            # -----------------------------------------------
+            # 選択モード開始
+            # -----------------------------------------------
+
+            set {tetsusen.setup} to true
+
+
+            # -----------------------------------------------
+            # CLEAR状態初期化
+            # -----------------------------------------------
 
             delete {tetsusen.clear::*}
             delete {tetsusen.cleartime::*}
 
 
-            # ------------------------------------------------
-            # 巨大HEAD削除
-            # ------------------------------------------------
+            # -----------------------------------------------
+            # メッセージ
+            # -----------------------------------------------
 
-            execute console command "kill @e[tag=tetsusen_big_head]"
-
-
-            # ------------------------------------------------
-            # 選択モードON
-            # ------------------------------------------------
-
-            set {tetsusen.setup} to true
-
-
-            # ------------------------------------------------
-            # チャット
-            # ------------------------------------------------
-
-            send "&a==============================" to all players
-            send "&a        鉄千 SET" to all players
+            send "" to all players
+            send "&a&l==============================" to all players
+            send "&a&l          鉄千 SET" to all players
             send "&e焼き場を選択してください。" to all players
-            send "&a==============================" to all players
+            send "&a&l==============================" to all players
 
             stop
 
@@ -265,9 +266,9 @@ command /tetsusen <text> [<number>]:
 
         if arg-1 is "start":
 
-            # ------------------------------------------------
-            # SETされていない
-            # ------------------------------------------------
+            # -----------------------------------------------
+            # SET確認
+            # -----------------------------------------------
 
             if {tetsusen.setup} is not true:
 
@@ -275,9 +276,9 @@ command /tetsusen <text> [<number>]:
                 stop
 
 
-            # ------------------------------------------------
-            # 既に開始
-            # ------------------------------------------------
+            # -----------------------------------------------
+            # 既に開始済み
+            # -----------------------------------------------
 
             if {tetsusen.running} is true:
 
@@ -285,9 +286,9 @@ command /tetsusen <text> [<number>]:
                 stop
 
 
-            # ------------------------------------------------
+            # -----------------------------------------------
             # 必要個数確認
-            # ------------------------------------------------
+            # -----------------------------------------------
 
             if arg-2 is not set:
 
@@ -302,9 +303,9 @@ command /tetsusen <text> [<number>]:
                 stop
 
 
-            # ------------------------------------------------
+            # -----------------------------------------------
             # ゲーム開始
-            # ------------------------------------------------
+            # -----------------------------------------------
 
             set {tetsusen.running} to true
 
@@ -313,9 +314,9 @@ command /tetsusen <text> [<number>]:
             set {tetsusen.time} to 0
 
 
-            # ------------------------------------------------
-            # 各プレイヤー初期化
-            # ------------------------------------------------
+            # -----------------------------------------------
+            # プレイヤー状態初期化
+            # -----------------------------------------------
 
             loop all players:
 
@@ -328,39 +329,39 @@ command /tetsusen <text> [<number>]:
                     execute console command "scoreboard players set %loop-player% iron_count 0"
 
 
-            # ------------------------------------------------
+            # -----------------------------------------------
             # Scoreboard
-            # ------------------------------------------------
+            # -----------------------------------------------
 
             execute console command "scoreboard objectives add iron_count dummy"
 
             execute console command "scoreboard objectives setdisplay sidebar iron_count"
 
 
-            # ------------------------------------------------
+            # -----------------------------------------------
             # START TITLE
-            # ------------------------------------------------
+            # -----------------------------------------------
 
             send title "&6&lIRON %arg-2%!" with subtitle "&e&lSTART!!" to all players
 
 
-            # ------------------------------------------------
-            # START SOUND
-            # ------------------------------------------------
+            # -----------------------------------------------
+            # SOUND
+            # -----------------------------------------------
 
             play sound "block.note_block.pling" with volume 1 and pitch 1 to all players
 
 
-            # ------------------------------------------------
+            # -----------------------------------------------
             # CHAT
-            # ------------------------------------------------
+            # -----------------------------------------------
 
             send "" to all players
-
             send "&6&l==============================" to all players
             send "&e&l          鉄千 START!" to all players
             send "&f必要個数: &e%{tetsusen.required}%個" to all players
             send "&6&l==============================" to all players
+            send "" to all players
 
             stop
 
@@ -380,17 +381,22 @@ command /tetsusen <text> [<number>]:
             set {tetsusen.running} to false
 
 
-            # ------------------------------------------------
+            # -----------------------------------------------
             # Sidebar OFF
-            # ------------------------------------------------
+            # -----------------------------------------------
 
             execute console command "scoreboard objectives setdisplay sidebar"
 
+
+            # -----------------------------------------------
+            # Message
+            # -----------------------------------------------
 
             send "" to all players
             send "&c&l==============================" to all players
             send "&c&l          鉄千 STOP!" to all players
             send "&c&l==============================" to all players
+            send "" to all players
 
             stop
 
@@ -401,17 +407,17 @@ command /tetsusen <text> [<number>]:
 
         if arg-1 is "reset":
 
-            # ------------------------------------------------
+            # -----------------------------------------------
             # ゲーム停止
-            # ------------------------------------------------
+            # -----------------------------------------------
 
             set {tetsusen.running} to false
             set {tetsusen.setup} to false
 
 
-            # ------------------------------------------------
-            # 現在選択されている焼き場を取得
-            # ------------------------------------------------
+            # -----------------------------------------------
+            # 選択済みプレイヤーごとに復元
+            # -----------------------------------------------
 
             loop all players:
 
@@ -420,50 +426,74 @@ command /tetsusen <text> [<number>]:
                     set {_shulker} to {tetsusen.shulker::%loop-player%}
 
 
-                    # ----------------------------------------
-                    # 通常プレイヤーヘッド削除
-                    # ----------------------------------------
+                    # =================================================
+                    # SHULKER LOCATION
+                    # =================================================
 
-                    set {_headX} to x-coordinate of location of {_shulker}
-                    set {_headY} to y-coordinate of location of {_shulker}
-                    set {_headZ} to z-coordinate of location of {_shulker}
-
-                    add 2 to {_headY}
-
-                    execute console command "setblock %{_headX}% %{_headY}% %{_headZ}% air"
+                    set {_shulkerX} to x-coordinate of location of {_shulker}
+                    set {_shulkerY} to y-coordinate of location of {_shulker}
+                    set {_shulkerZ} to z-coordinate of location of {_shulker}
 
 
-                    # ----------------------------------------
-                    # ボタン復活
+                    # =================================================
+                    # NORMAL HEAD REMOVE
                     #
-                    # ボタン:
-                    #   Y = shulker Y + 1
-                    #   Z = shulker Z - 1
-                    # ----------------------------------------
+                    # shulker + Y1
+                    # =================================================
 
-                    set {_buttonY} to y-coordinate of location of {_shulker}
-                    add 1 to {_buttonY}
+                    set {_headLocation} to location of {_shulker}
 
-                    set {_buttonZ} to z-coordinate of location of {_shulker}
-                    remove 1 from {_buttonZ}
+                    add 1 to y-coordinate of {_headLocation}
 
-                    execute console command "setblock %{_headX}% %{_buttonY}% %{_buttonZ}% minecraft:stone_button[facing=south]"
+                    set block at {_headLocation} to air
 
 
-            # ------------------------------------------------
-            # 巨大HEAD削除
-            # ------------------------------------------------
+                    # =================================================
+                    # BUTTON RESTORE
+                    #
+                    # MineScript:
+                    #
+                    # button X = shulker X
+                    # button Y = shulker Y
+                    # button Z = shulker Z - 1
+                    #
+                    # facing = north
+                    # =================================================
+
+                    set {_buttonLocation} to location of {_shulker}
+
+                    remove 1 from z-coordinate of {_buttonLocation}
+
+                    set block at {_buttonLocation} to stone button
+
+
+            # =================================================
+            # BIG HEAD REMOVE
+            # =================================================
 
             execute console command "kill @e[tag=tetsusen_big_head]"
 
 
-            # ------------------------------------------------
-            # 変数削除
-            # ------------------------------------------------
+            # =================================================
+            # SCOREBOARD
+            # =================================================
+
+            execute console command "scoreboard players reset * iron_count"
+
+            execute console command "scoreboard objectives setdisplay sidebar"
+
+
+            # =================================================
+            # VARIABLES CLEAR
+            # =================================================
 
             delete {tetsusen.station::*}
             delete {tetsusen.station.player::*}
             delete {tetsusen.shulker::*}
+
+            delete {tetsusen.button::*}
+            delete {tetsusen.head::*}
+            delete {tetsusen.bighead.location::*}
 
             delete {tetsusen.required}
             delete {tetsusen.time}
@@ -472,24 +502,16 @@ command /tetsusen <text> [<number>]:
             delete {tetsusen.cleartime::*}
 
 
-            # ------------------------------------------------
-            # Scoreboard
-            # ------------------------------------------------
-
-            execute console command "scoreboard players reset * iron_count"
-
-            execute console command "scoreboard objectives setdisplay sidebar"
-
-
-            # ------------------------------------------------
-            # Message
-            # ------------------------------------------------
+            # =================================================
+            # MESSAGE
+            # =================================================
 
             send "" to all players
             send "&e&l==============================" to all players
-            send "&e&l        鉄千 RESET" to all players
-            send "&f焼き場を初期状態に戻しました。" to all players
+            send "&e&l          鉄千 RESET" to all players
+            send "&f焼き場・プレイヤーヘッド・ボタンを初期化しました。" to all players
             send "&e&l==============================" to all players
+            send "" to all players
 
             stop
 
@@ -510,11 +532,11 @@ command /tetsusen <text> [<number>]:
 
 every 1 second:
 
-    # ========================================================
-    # GAME TIMER
-    # ========================================================
-
     if {tetsusen.running} is true:
+
+        # ====================================================
+        # TIMER
+        # ====================================================
 
         add 1 to {tetsusen.time}
 
@@ -570,7 +592,7 @@ every 1 second:
 
 
                         # ========================================
-                        # TIME
+                        # TIME CALCULATION
                         # ========================================
 
                         set {_hours} to floor({_clearSeconds} / 3600)
@@ -581,7 +603,7 @@ every 1 second:
 
 
                         # ----------------------------------------
-                        # 分
+                        # MINUTES
                         # ----------------------------------------
 
                         if {_minutes} < 10:
@@ -594,7 +616,7 @@ every 1 second:
 
 
                         # ----------------------------------------
-                        # 秒
+                        # SECONDS
                         # ----------------------------------------
 
                         if {_seconds} < 10:
@@ -637,10 +659,8 @@ every 1 second:
                         # ========================================
 
                         send "" to all players
-
                         send "&6&l====================================" to all players
                         send "&e&l              CLEAR!!" to all players
                         send "&f%loop-player% &7→ &e%{_timeText}%" to all players
                         send "&6&l====================================" to all players
-
                         send "" to all players
