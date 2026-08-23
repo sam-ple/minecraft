@@ -1,0 +1,204 @@
+# ============================================================
+# LINERACE PLAYER START SYSTEM
+#
+# Features
+#   ・スタート地点のストーンボタンを右クリック
+#   ・プレイヤーとスタート地点を紐付け
+#   ・スタート地点へTP
+#   ・コンクリート上にプレイヤーヘッド設置
+#   ・ボタンを削除
+#   ・座標は整数化
+#
+# ============================================================
+
+
+# ============================================================
+# LOAD
+# ============================================================
+
+on load:
+
+    delete {linerace.player::*}
+    delete {linerace.start::*}
+    delete {linerace.head::*}
+
+    send "&aLineRace Player System loaded." to console
+
+
+# ============================================================
+# BUTTON CLICK
+# ============================================================
+
+on right click on stone button:
+
+    cancel event
+
+
+    # ========================================================
+    # ボタン位置
+    # ========================================================
+
+    set {_buttonX} to floor(x-coordinate of event-block)
+    set {_buttonY} to floor(y-coordinate of event-block)
+    set {_buttonZ} to floor(z-coordinate of event-block)
+
+
+    # ========================================================
+    # コンクリート位置
+    #
+    # 今回のコースは Z+
+    #
+    # ボタンはコンクリートの Z-1 側
+    # ========================================================
+
+    set {_concreteX} to {_buttonX}
+    set {_concreteY} to {_buttonY}
+    set {_concreteZ} to {_buttonZ} + 1
+
+
+    # ========================================================
+    # コンクリート確認
+    # ========================================================
+
+    set {_concrete} to block at location({_concreteX}, {_concreteY}, {_concreteZ}, world of event-block)
+
+
+    if {_concrete} is not white concrete:
+        if {_concrete} is not orange concrete:
+            if {_concrete} is not light blue concrete:
+                if {_concrete} is not lime concrete:
+                    if {_concrete} is not yellow concrete:
+
+                        send "&cこのボタンはLineRaceのスタートボタンではありません。" to player
+                        stop
+
+
+    # ========================================================
+    # すでに選択済み
+    # ========================================================
+
+    if {linerace.player::%player%} is set:
+
+        send "&cあなたはすでにスタート地点を選択しています。" to player
+        stop
+
+
+    # ========================================================
+    # スタート地点の識別
+    #
+    # コンクリート座標をキーにする
+    # ========================================================
+
+    set {_startKey} to "%world of event-block%:%{_concreteX}%:%{_concreteY}%:%{_concreteZ}%"
+
+
+    # ========================================================
+    # そのスタート地点が使用済みか確認
+    # ========================================================
+
+    if {linerace.start::%{_startKey}%} is set:
+
+        send "&cこのスタート地点はすでに使用されています。" to player
+        stop
+
+
+    # ========================================================
+    # PLAYER START LOCATION
+    #
+    # プレイヤーはコンクリートの上
+    #
+    # X = concrete X
+    # Y = concrete Y + 1
+    # Z = concrete Z
+    # ========================================================
+
+    set {_startX} to floor({_concreteX})
+    set {_startY} to floor({_concreteY}) + 1
+    set {_startZ} to floor({_concreteZ})
+
+
+    # ========================================================
+    # PLAYER → START
+    # ========================================================
+
+    set {linerace.player::%player%} to {_startKey}
+
+
+    # ========================================================
+    # START → PLAYER
+    # ========================================================
+
+    set {linerace.start::%{_startKey}%} to player
+
+
+    # ========================================================
+    # PLAYER START COORDINATES
+    # ========================================================
+
+    set {linerace.start.x::%player%} to {_startX}
+    set {linerace.start.y::%player%} to {_startY}
+    set {linerace.start.z::%player%} to {_startZ}
+
+    set {linerace.start.world::%player%} to world of event-block
+
+
+    # ========================================================
+    # HEAD LOCATION
+    #
+    # コンクリートの1ブロック上
+    # ========================================================
+
+    set {_headX} to floor({_concreteX})
+    set {_headY} to floor({_concreteY}) + 1
+    set {_headZ} to floor({_concreteZ})
+
+
+    set {linerace.head.x::%player%} to {_headX}
+    set {linerace.head.y::%player%} to {_headY}
+    set {linerace.head.z::%player%} to {_headZ}
+    set {linerace.head.world::%player%} to world of event-block
+
+
+    # ========================================================
+    # DELETE BUTTON
+    # ========================================================
+
+    set event-block to air
+
+
+    # ========================================================
+    # PLAYER HEAD
+    # ========================================================
+
+    set {_headLocation} to location({_headX}, {_headY}, {_headZ}, world of event-block)
+
+    set block at {_headLocation} to player head
+
+    set skull owner of block at {_headLocation} to player
+
+
+    # ========================================================
+    # TELEPORT
+    # ========================================================
+
+    set {_tpLocation} to location({_startX}, {_startY}, {_startZ}, world of event-block)
+
+    teleport player to {_tpLocation}
+
+
+    # ========================================================
+    # MESSAGE
+    # ========================================================
+
+    send "&a&lスタート地点を登録しました！" to player
+
+    send "&7座標: &f%{_startX}%, %{_startY}%, %{_startZ}%" to player
+
+    send "&7スタート地点へ移動しました。" to player
+
+
+    # ========================================================
+    # ALL PLAYER MESSAGE
+    # ========================================================
+
+    send "&e%player% &7がLineRaceのスタート地点を選択しました。" to all players
