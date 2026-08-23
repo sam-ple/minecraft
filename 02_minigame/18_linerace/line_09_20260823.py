@@ -1,27 +1,27 @@
 # ============================================================
 # LINERACE COURSE GENERATOR
-# Version : v0.5.01
+# Version : v0.6.00
 #
 # Minecraft Java Edition + Minescript
 #
 # Features
-#   ・5レーン直線コース生成
+#   ・5レーン直線コース
 #   ・200ブロック単位で処理
-#   ・200ブロック内で5レーンをまとめて生成
-#   ・200ブロックごとにSpectator移動
-#   ・forceload 不使用
-#   ・tp後にロード待機
-#   ・区間内をSpectatorで先行移動してチャンクをロード
-#   ・getblocklist() による高速地面探索
-#   ・50ブロック単位で地形取得
-#   ・GROUND NOT FOUND 自動リトライ
+#   ・5レーンをまとめて生成
+#   ・各レーン独立の地形追従
 #   ・崖 / 坂 / 段差対応
-#   ・雪はウールに置換
-#   ・木や葉の上の雪は地面として扱わない
-#   ・5レーンそれぞれ独立した高さ追従
+#   ・getblocklist() による高速地形探索
+#   ・50ブロック単位で地形取得
+#   ・200ブロック区間の中央へSpectator TP
+#   ・TP後にチャンクロード待機
+#   ・GROUND NOT FOUND時に自動リトライ
+#   ・getblock() によるフォールバック
+#   ・地面の雪はウールに置換
+#   ・木 / 葉の上の雪は無視
 #   ・途中保存
 #   ・途中から再開可能
 #   ・resetで生成状態をリセット
+#   ・forceload不使用
 #
 # Commands
 #   set
@@ -50,40 +50,41 @@ LINE_COUNT = 5
 # レーン間隔
 BLOCK_SPACING = 2
 
-# コース長
+# コース全長
 TOTAL_LENGTH = 1000
 
-# ============================================================
-# AREA
-# ============================================================
-
-# 200ブロックごとに区切る
+# 1回に処理する区間
 AREA_LENGTH = 200
 
 # 地形取得単位
-GROUND_SLICE = 50
+SLICE_LENGTH = 50
 
 
 # ============================================================
-# SPECTATOR SETTINGS
+# SPECTATOR / CHUNK LOAD SETTINGS
 # ============================================================
 
-# 200ブロック区間内を先に移動する間隔
-LOAD_STEP = 32
+# 200ブロック区間の中央へTP
+#
+# 0-200   -> 100
+# 200-400 -> 300
+# 400-600 -> 500
+#
+TP_CENTER_OFFSET = 100
 
-# TP直後の待機
-TP_WAIT = 0.45
+# TP後の初期待機
+TP_WAIT = 1.0
 
-# 区間内を移動した後の待機
-LOAD_WAIT = 0.15
+# 地形取得失敗時のリトライ回数
+GROUND_RETRY_COUNT = 5
 
-# GROUND NOT FOUND時の追加待機
-RETRY_WAIT = 0.35
+# リトライ間隔
+GROUND_RETRY_WAIT = 0.35
 
-# 最大リトライ回数
-GROUND_RETRY = 3
+# フォールバック前の待機
+FALLBACK_WAIT = 0.5
 
-# 地面からの高さ
+# Spectatorの高さ
 SPECTATOR_HEIGHT = 5
 
 
@@ -183,6 +184,15 @@ WOOD_BLOCKS = {
     "minecraft:dark_oak_wood",
     "minecraft:mangrove_wood",
     "minecraft:cherry_wood",
+
+    "minecraft:stripped_oak_wood",
+    "minecraft:stripped_spruce_wood",
+    "minecraft:stripped_birch_wood",
+    "minecraft:stripped_jungle_wood",
+    "minecraft:stripped_acacia_wood",
+    "minecraft:stripped_dark_oak_wood",
+    "minecraft:stripped_mangrove_wood",
+    "minecraft:stripped_cherry_wood",
 }
 
 
@@ -206,15 +216,17 @@ LEAF_BLOCKS = {
 # SEARCH SETTINGS
 # ============================================================
 
+# 前回Y周辺
 FAST_SEARCH_UP = 12
 FAST_SEARCH_DOWN = 12
 
+# 広範囲
 FALLBACK_SEARCH_UP = 40
-FALLBACK_SEARCH_DOWN = 128
+FALLBACK_SEARCH_DOWN = 120
 
 
 # ============================================================
-# DATA
+# DATA DIRECTORY
 # ============================================================
 
 BASE_DIR = "minescript/data/linerace"
@@ -223,7 +235,6 @@ os.makedirs(
     BASE_DIR,
     exist_ok=True
 )
-
 
 LANES_FILE = (
     f"{BASE_DIR}/lanes.json"
@@ -243,7 +254,7 @@ PLAYER_STATE_FILE = (
 
 
 # ============================================================
-# BLOCK NORMALIZATION
+# BLOCK NORMALIZE
 # ============================================================
 
 def normalize_block(block):
@@ -258,7 +269,7 @@ def normalize_block(block):
 
 
 # ============================================================
-# BLOCK CHECK
+# SURFACE CHECK
 # ============================================================
 
 def is_surface(block):
@@ -268,6 +279,10 @@ def is_surface(block):
         in SURFACE_BLOCKS
     )
 
+
+# ============================================================
+# TREE CHECK
+# ============================================================
 
 def is_tree_or_leaf(block):
 
@@ -280,16 +295,16 @@ def is_tree_or_leaf(block):
 
 
 # ============================================================
-# SAVE PLAYER POSITION
+# SAVE PLAYER
 # ============================================================
 
-def save_player_position():
+def save_player_state():
 
     try:
 
         x, y, z = m.player_position()
 
-        data = {
+        state = {
             "position": [
                 x,
                 y,
@@ -304,7 +319,7 @@ def save_player_position():
         ) as f:
 
             json.dump(
-                data,
+                state,
                 f,
                 indent=2
             )
@@ -312,7 +327,7 @@ def save_player_position():
     except Exception as e:
 
         m.echo(
-            f"Player position save failed: {e}"
+            f"Player state save failed: {e}"
         )
 
 
@@ -335,25 +350,21 @@ def restore_player():
             encoding="utf-8"
         ) as f:
 
-            data = json.load(f)
+            state = json.load(f)
 
-        x, y, z = data["position"]
+        x, y, z = state["position"]
 
         m.execute(
             "gamemode creative"
         )
 
-        time.sleep(
-            0.2
-        )
+        time.sleep(0.2)
 
         m.execute(
             f"tp @s {x} {y} {z}"
         )
 
-        time.sleep(
-            0.3
-        )
+        time.sleep(0.3)
 
         m.echo(
             "Player position restored."
@@ -400,6 +411,8 @@ def create_state():
 
         lanes.append({
 
+            "player": "",
+
             "start": [
                 sx,
                 py,
@@ -408,10 +421,11 @@ def create_state():
 
             "last_y": py,
 
+            "prev_y": py,
+
             "color": COLORS[i]
 
         })
-
 
     lane_data = {
 
@@ -421,7 +435,6 @@ def create_state():
             TOTAL_LENGTH
 
     }
-
 
     with open(
         LANES_FILE,
@@ -436,7 +449,6 @@ def create_state():
             ensure_ascii=False
         )
 
-
     state = {
 
         "current_length": 0,
@@ -450,7 +462,6 @@ def create_state():
         ]
 
     }
-
 
     save_state(
         state
@@ -501,12 +512,361 @@ def save_state(state):
 
 
 # ============================================================
-# LANE POSITION
+# SEARCH Y LIST
 # ============================================================
 
-def lane_position(
-    lane,
+def make_search_ys(last_y):
+
+    ys = []
+
+    # まず近傍
+    for dy in range(
+        FAST_SEARCH_UP,
+        -FAST_SEARCH_DOWN - 1,
+        -1
+    ):
+
+        ys.append(
+            last_y + dy
+        )
+
+    # 広範囲
+    for dy in range(
+        FAST_SEARCH_UP + 1,
+        FALLBACK_SEARCH_UP + 1
+    ):
+
+        ys.append(
+            last_y + dy
+        )
+
+    for dy in range(
+        FAST_SEARCH_DOWN + 1,
+        FALLBACK_SEARCH_DOWN + 1
+    ):
+
+        ys.append(
+            last_y - dy
+        )
+
+    return ys
+
+
+# ============================================================
+# FIND SURFACE FROM BLOCK LIST
+# ============================================================
+
+def find_surface_from_blocks(
+    x,
+    z,
+    search_ys,
+    blocks
+):
+
+    if blocks is None:
+        return None
+
+    if len(blocks) != len(search_ys):
+        return None
+
+    for index, block in enumerate(blocks):
+
+        if not is_surface(block):
+            continue
+
+        y = search_ys[index]
+
+        # ----------------------------------------------------
+        # 雪の場合
+        #
+        # 雪の下が木・葉なら、
+        # 木の上の雪と判断して無視
+        # ----------------------------------------------------
+
+        block_type = normalize_block(
+            block
+        )
+
+        if block_type == "minecraft:snow":
+
+            try:
+
+                below = m.getblock(
+                    x,
+                    y - 1,
+                    z
+                )
+
+                if is_tree_or_leaf(
+                    below
+                ):
+
+                    continue
+
+            except Exception:
+
+                pass
+
+        return y
+
+    return None
+
+
+# ============================================================
+# GETBLOCK FALLBACK
+# ============================================================
+
+def find_surface_fallback(
+    x,
+    z,
+    last_y
+):
+
+    # --------------------------------------------------------
+    # 広範囲をgetblockで直接確認
+    # --------------------------------------------------------
+
+    for dy in range(
+        FALLBACK_SEARCH_UP,
+        -FALLBACK_SEARCH_DOWN - 1,
+        -1
+    ):
+
+        y = last_y + dy
+
+        try:
+
+            block = m.getblock(
+                x,
+                y,
+                z
+            )
+
+        except Exception:
+
+            continue
+
+        if not is_surface(block):
+            continue
+
+        block_type = normalize_block(
+            block
+        )
+
+        if block_type == "minecraft:snow":
+
+            try:
+
+                below = m.getblock(
+                    x,
+                    y - 1,
+                    z
+                )
+
+                if is_tree_or_leaf(
+                    below
+                ):
+
+                    continue
+
+            except Exception:
+
+                pass
+
+        return y
+
+    return None
+
+
+# ============================================================
+# GETBLOCKLIST FOR ONE POSITION
+# ============================================================
+
+def get_surface_with_getblocklist(
+    x,
+    z,
+    last_y
+):
+
+    search_ys = make_search_ys(
+        last_y
+    )
+
+    positions = []
+
+    for y in search_ys:
+
+        positions.append([
+            x,
+            y,
+            z
+        ])
+
+    try:
+
+        blocks = m.getblocklist(
+            positions
+        )
+
+    except Exception:
+
+        return None
+
+    return find_surface_from_blocks(
+        x,
+        z,
+        search_ys,
+        blocks
+    )
+
+
+# ============================================================
+# FIND SURFACE WITH RETRY
+# ============================================================
+
+def find_surface_retry(
+    x,
+    z,
+    last_y,
+    lane_color,
     distance
+):
+
+    # ========================================================
+    # GETBLOCKLIST RETRY
+    # ========================================================
+
+    for attempt in range(
+        GROUND_RETRY_COUNT
+    ):
+
+        surface_y = (
+            get_surface_with_getblocklist(
+                x,
+                z,
+                last_y
+            )
+        )
+
+        if surface_y is not None:
+
+            return surface_y
+
+        if attempt < (
+            GROUND_RETRY_COUNT - 1
+        ):
+
+            time.sleep(
+                GROUND_RETRY_WAIT
+            )
+
+    # ========================================================
+    # FALLBACK
+    # ========================================================
+
+    m.echo(
+        f"GROUND RETRY FAILED "
+        f"lane={lane_color} "
+        f"distance={distance} "
+        f"| fallback"
+    )
+
+    time.sleep(
+        FALLBACK_WAIT
+    )
+
+    surface_y = (
+        find_surface_fallback(
+            x,
+            z,
+            last_y
+        )
+    )
+
+    if surface_y is not None:
+
+        m.echo(
+            f"GROUND FALLBACK OK "
+            f"lane={lane_color} "
+            f"distance={distance}"
+        )
+
+        return surface_y
+
+    return None
+
+
+# ============================================================
+# GENERATE HEIGHTS
+# ============================================================
+
+def generate_lane_heights(
+    lane,
+    start_distance,
+    end_distance
+):
+
+    sx, sy, sz = lane["start"]
+
+    heights = {}
+
+    current_y = lane["last_y"]
+
+    for distance in range(
+        start_distance,
+        end_distance
+    ):
+
+        x = (
+            sx
+            + FX * distance
+        )
+
+        z = (
+            sz
+            + FZ * distance
+        )
+
+        surface_y = (
+            find_surface_retry(
+                x,
+                z,
+                current_y,
+                lane["color"],
+                distance
+            )
+        )
+
+        if surface_y is None:
+
+            m.echo(
+                "GROUND NOT FOUND "
+                f"lane={lane['color']} "
+                f"distance={distance} "
+                f"x={x} "
+                f"z={z} "
+                f"last_y={current_y}"
+            )
+
+            return None
+
+        heights[distance] = (
+            surface_y
+        )
+
+        current_y = surface_y
+
+    return heights
+
+
+# ============================================================
+# SET WOOL
+# ============================================================
+
+def set_lane_block(
+    lane,
+    distance,
+    ground_y
 ):
 
     sx, sy, sz = lane["start"]
@@ -521,459 +881,6 @@ def lane_position(
         + FZ * distance
     )
 
-    return x, z
-
-
-# ============================================================
-# SPECTATOR TP
-# ============================================================
-
-def spectator_tp(
-    lane,
-    distance,
-    wait=True
-):
-
-    x, z = lane_position(
-        lane,
-        distance
-    )
-
-    y = (
-        lane["last_y"]
-        + SPECTATOR_HEIGHT
-    )
-
-    m.execute(
-        "gamemode spectator"
-    )
-
-    time.sleep(
-        0.08
-    )
-
-    m.execute(
-        f"tp @s {x} {y} {z}"
-    )
-
-    if wait:
-
-        time.sleep(
-            TP_WAIT
-        )
-
-    return x, y, z
-
-
-# ============================================================
-# PRELOAD AREA
-# ============================================================
-
-def preload_area(
-    lanes,
-    start_distance,
-    end_distance
-):
-
-    """
-    200ブロック区間をSpectatorで先に走査する。
-
-    5レーンの中央付近を移動する。
-    レーン間隔は最大8ブロック程度なので、
-    1本を通れば周囲のチャンクも読み込まれる。
-    """
-
-    lane = lanes[0]
-
-    m.echo(
-        f"Preload "
-        f"{start_distance}-"
-        f"{end_distance}"
-    )
-
-
-    distance = start_distance
-
-
-    while distance < end_distance:
-
-        spectator_tp(
-            lane,
-            distance,
-            wait=False
-        )
-
-        time.sleep(
-            LOAD_WAIT
-        )
-
-        distance += LOAD_STEP
-
-
-    # 最後の地点
-    spectator_tp(
-        lane,
-        end_distance - 1,
-        wait=True
-    )
-
-
-    m.echo(
-        "Chunk preload complete."
-    )
-
-
-# ============================================================
-# SEARCH Y LIST
-# ============================================================
-
-def make_search_ys(
-    last_y
-):
-
-    return list(
-        range(
-            last_y
-            + FAST_SEARCH_UP,
-
-            last_y
-            - FAST_SEARCH_DOWN
-            - 1,
-
-            -1
-        )
-    )
-
-
-# ============================================================
-# GET SURFACE FROM BLOCK LIST
-# ============================================================
-
-def find_surface_from_blocks(
-    x,
-    z,
-    last_y,
-    blocks
-):
-
-    # ========================================================
-    # FAST SEARCH
-    # ========================================================
-
-    search_ys = make_search_ys(
-        last_y
-    )
-
-    limit = min(
-        len(search_ys),
-        len(blocks)
-    )
-
-
-    for i in range(
-        limit
-    ):
-
-        block = blocks[i]
-
-        if not is_surface(block):
-            continue
-
-        y = search_ys[i]
-
-        # ----------------------------------------------------
-        # 雪
-        # ----------------------------------------------------
-
-        if normalize_block(block) == "minecraft:snow":
-
-            try:
-
-                below = m.getblock(
-                    x,
-                    y - 1,
-                    z
-                )
-
-                # 木や葉の上の雪は無視
-                if is_tree_or_leaf(
-                    below
-                ):
-                    continue
-
-            except Exception:
-
-                pass
-
-        return y
-
-
-    # ========================================================
-    # FALLBACK
-    # ========================================================
-
-    fallback_ys = list(
-        range(
-            last_y
-            + FALLBACK_SEARCH_UP,
-
-            last_y
-            - FALLBACK_SEARCH_DOWN
-            - 1,
-
-            -1
-        )
-    )
-
-
-    positions = [
-        [
-            x,
-            y,
-            z
-        ]
-        for y in fallback_ys
-    ]
-
-
-    try:
-
-        fallback_blocks = m.getblocklist(
-            positions
-        )
-
-    except Exception:
-
-        return None
-
-
-    limit = min(
-        len(fallback_ys),
-        len(fallback_blocks)
-    )
-
-
-    for i in range(
-        limit
-    ):
-
-        block = fallback_blocks[i]
-
-        if not is_surface(block):
-            continue
-
-        y = fallback_ys[i]
-
-        if normalize_block(block) == "minecraft:snow":
-
-            try:
-
-                below = m.getblock(
-                    x,
-                    y - 1,
-                    z
-                )
-
-                if is_tree_or_leaf(
-                    below
-                ):
-                    continue
-
-            except Exception:
-
-                pass
-
-        return y
-
-
-    return None
-
-
-# ============================================================
-# GENERATE HEIGHTS FOR ONE LANE
-# ============================================================
-
-def generate_lane_heights(
-    lane,
-    start_distance,
-    end_distance
-):
-
-    """
-    1レーン分の50ブロックを
-    getblocklist()でまとめて探索。
-    """
-
-    heights = {}
-
-    current_y = lane["last_y"]
-
-
-    for distance in range(
-        start_distance,
-        end_distance
-    ):
-
-        x, z = lane_position(
-            lane,
-            distance
-        )
-
-        # ----------------------------------------------------
-        # FAST SEARCH用のY
-        # ----------------------------------------------------
-
-        search_ys = make_search_ys(
-            current_y
-        )
-
-
-        positions = [
-            [
-                x,
-                y,
-                z
-            ]
-            for y in search_ys
-        ]
-
-
-        try:
-
-            blocks = m.getblocklist(
-                positions
-            )
-
-        except Exception as e:
-
-            m.echo(
-                f"getblocklist failed "
-                f"lane={lane['color']} "
-                f"distance={distance} "
-                f"error={e}"
-            )
-
-            return None
-
-
-        surface_y = (
-            find_surface_from_blocks(
-                x,
-                z,
-                current_y,
-                blocks
-            )
-        )
-
-
-        # ----------------------------------------------------
-        # 見つからない
-        # ----------------------------------------------------
-
-        if surface_y is None:
-
-            return None
-
-
-        heights[distance] = (
-            surface_y
-        )
-
-        current_y = surface_y
-
-
-    return heights
-
-
-# ============================================================
-# RETRY GROUND
-# ============================================================
-
-def generate_lane_heights_retry(
-    lane,
-    start_distance,
-    end_distance
-):
-
-    """
-    GROUND NOT FOUND対策。
-
-    失敗したらその地点まで
-    Spectatorで移動してロードを促す。
-    """
-
-    for attempt in range(
-        GROUND_RETRY + 1
-    ):
-
-        result = generate_lane_heights(
-            lane,
-            start_distance,
-            end_distance
-        )
-
-        if result is not None:
-
-            return result
-
-
-        if attempt >= GROUND_RETRY:
-
-            return None
-
-
-        # ----------------------------------------------------
-        # リトライ前に区間中央へ移動
-        # ----------------------------------------------------
-
-        retry_distance = (
-            start_distance
-            + min(
-                25,
-                end_distance
-                - start_distance
-                - 1
-            )
-        )
-
-
-        m.echo(
-            f"Ground retry "
-            f"{attempt + 1}/"
-            f"{GROUND_RETRY}"
-        )
-
-
-        spectator_tp(
-            lane,
-            retry_distance,
-            wait=True
-        )
-
-
-        time.sleep(
-            RETRY_WAIT
-        )
-
-
-    return None
-
-
-# ============================================================
-# SET WOOL
-# ============================================================
-
-def set_wool(
-    lane,
-    distance,
-    y
-):
-
-    x, z = lane_position(
-        lane,
-        distance
-    )
-
     wool = (
         f"minecraft:"
         f"{lane['color']}"
@@ -982,129 +889,51 @@ def set_wool(
 
     m.execute(
         f"setblock "
-        f"{x} {y} {z} "
+        f"{x} "
+        f"{ground_y} "
+        f"{z} "
         f"{wool}"
     )
 
 
 # ============================================================
-# APPLY HEIGHTS
-# ============================================================
-
-def apply_heights(
-    lane,
-    heights,
-    start_distance,
-    end_distance
-):
-
-    """
-    同じ高さが連続する部分は
-    fillでまとめて生成する。
-    """
-
-    if not heights:
-
-        return
-
-
-    fill_start = None
-
-    fill_y = None
-
-
-    for distance in range(
-        start_distance,
-        end_distance
-    ):
-
-        y = heights[distance]
-
-
-        if fill_start is None:
-
-            fill_start = distance
-
-            fill_y = y
-
-            continue
-
-
-        if y == fill_y:
-
-            continue
-
-
-        # ----------------------------------------------------
-        # 高さが変わった
-        # ----------------------------------------------------
-
-        fill_lane_range(
-            lane,
-            fill_start,
-            distance - 1,
-            fill_y
-        )
-
-
-        fill_start = distance
-
-        fill_y = y
-
-
-    # --------------------------------------------------------
-    # 最後
-    # --------------------------------------------------------
-
-    if fill_start is not None:
-
-        fill_lane_range(
-            lane,
-            fill_start,
-            end_distance - 1,
-            fill_y
-        )
-
-
-    last_distance = (
-        end_distance - 1
-    )
-
-
-    lane["last_y"] = (
-        heights[last_distance]
-    )
-
-
-# ============================================================
-# FILL LANE
+# FILL SAME HEIGHT RANGE
 # ============================================================
 
 def fill_lane_range(
     lane,
     start_distance,
     end_distance,
-    y
+    ground_y
 ):
 
     if (
         end_distance
         < start_distance
     ):
-
         return
 
+    sx, sy, sz = lane["start"]
 
-    x1, z1 = lane_position(
-        lane,
-        start_distance
+    x1 = (
+        sx
+        + FX * start_distance
     )
 
-    x2, z2 = lane_position(
-        lane,
-        end_distance
+    z1 = (
+        sz
+        + FZ * start_distance
     )
 
+    x2 = (
+        sx
+        + FX * end_distance
+    )
+
+    z2 = (
+        sz
+        + FZ * end_distance
+    )
 
     wool = (
         f"minecraft:"
@@ -1112,27 +941,11 @@ def fill_lane_range(
         f"_wool"
     )
 
+    # --------------------------------------------------------
+    # X方向
+    # --------------------------------------------------------
 
-    # ========================================================
-    # Z+
-    # ========================================================
-
-    if FX == 0:
-
-        min_x = x1
-        max_x = x1
-
-        min_z = min(
-            z1,
-            z2
-        )
-
-        max_z = max(
-            z1,
-            z2
-        )
-
-    else:
+    if FX != 0:
 
         min_x = min(
             x1,
@@ -1147,80 +960,342 @@ def fill_lane_range(
         min_z = z1
         max_z = z1
 
+    # --------------------------------------------------------
+    # Z方向
+    # --------------------------------------------------------
 
-    # ========================================================
-    # SET
-    # ========================================================
+    else:
 
-    if start_distance == end_distance:
+        min_x = x1
+        max_x = x1
 
-        set_wool(
+        min_z = min(
+            z1,
+            z2
+        )
+
+        max_z = max(
+            z1,
+            z2
+        )
+
+    # --------------------------------------------------------
+    # 1ブロック
+    # --------------------------------------------------------
+
+    if (
+        start_distance
+        == end_distance
+    ):
+
+        set_lane_block(
             lane,
             start_distance,
-            y
+            ground_y
         )
 
         return
 
+    # --------------------------------------------------------
+    # FILL
+    # --------------------------------------------------------
 
     m.execute(
         f"fill "
-        f"{min_x} {y} {min_z} "
-        f"{max_x} {y} {max_z} "
+        f"{min_x} {ground_y} {min_z} "
+        f"{max_x} {ground_y} {max_z} "
         f"{wool}"
     )
 
 
 # ============================================================
-# GENERATE ONE 50 BLOCK SLICE
+# APPLY HEIGHTS
 # ============================================================
 
-def generate_slice(
+def apply_lane_heights(
     lane,
+    heights,
     start_distance,
     end_distance
 ):
 
-    heights = (
-        generate_lane_heights_retry(
-            lane,
-            start_distance,
-            end_distance
-        )
-    )
-
-
-    if heights is None:
-
-        m.echo(
-            "GROUND NOT FOUND "
-            f"lane={lane['color']} "
-            f"distance={start_distance}"
-        )
-
+    if not heights:
         return False
 
+    fill_start = None
 
-    apply_heights(
-        lane,
-        heights,
-        start_distance,
-        end_distance
+    fill_y = None
+
+    last_distance = (
+        end_distance - 1
     )
 
+    for distance in range(
+        start_distance,
+        end_distance
+    ):
+
+        ground_y = (
+            heights[distance]
+        )
+
+        # ----------------------------------------------------
+        # 最初
+        # ----------------------------------------------------
+
+        if fill_start is None:
+
+            fill_start = distance
+
+            fill_y = ground_y
+
+            continue
+
+        # ----------------------------------------------------
+        # 同じ高さ
+        # ----------------------------------------------------
+
+        if ground_y == fill_y:
+
+            continue
+
+        # ----------------------------------------------------
+        # 高さが変わった
+        # ----------------------------------------------------
+
+        fill_lane_range(
+            lane,
+            fill_start,
+            distance - 1,
+            fill_y
+        )
+
+        fill_start = distance
+
+        fill_y = ground_y
+
+    # --------------------------------------------------------
+    # 最後
+    # --------------------------------------------------------
+
+    if fill_start is not None:
+
+        fill_lane_range(
+            lane,
+            fill_start,
+            last_distance,
+            fill_y
+        )
+
+    # --------------------------------------------------------
+    # Y更新
+    # --------------------------------------------------------
+
+    lane["last_y"] = (
+        heights[last_distance]
+    )
+
+    if (
+        last_distance
+        > start_distance
+    ):
+
+        lane["prev_y"] = (
+            heights[
+                last_distance - 1
+            ]
+        )
 
     return True
 
 
 # ============================================================
-# GENERATE 200 BLOCK AREA
+# SPECTATOR TP
+# ============================================================
+
+def spectator_tp_to_area(
+    lane,
+    area_start,
+    area_end
+):
+
+    sx, sy, sz = lane["start"]
+
+    # --------------------------------------------------------
+    # 区間中央
+    # --------------------------------------------------------
+
+    center_distance = (
+        area_start
+        + TP_CENTER_OFFSET
+    )
+
+    # 最後の区間だけ調整
+    if center_distance >= area_end:
+
+        center_distance = (
+            area_start
+            + (
+                area_end
+                - area_start
+            ) // 2
+        )
+
+    x = (
+        sx
+        + FX * center_distance
+    )
+
+    z = (
+        sz
+        + FZ * center_distance
+    )
+
+    y = (
+        lane["last_y"]
+        + SPECTATOR_HEIGHT
+    )
+
+    m.execute(
+        "gamemode spectator"
+    )
+
+    time.sleep(
+        0.15
+    )
+
+    m.echo(
+        f"Spectator TP -> "
+        f"{center_distance} "
+        f"({x}, {y}, {z})"
+    )
+
+    m.execute(
+        f"tp @s "
+        f"{x} "
+        f"{y} "
+        f"{z}"
+    )
+
+    # --------------------------------------------------------
+    # TP直後のチャンクロード待ち
+    # --------------------------------------------------------
+
+    time.sleep(
+        TP_WAIT
+    )
+
+
+# ============================================================
+# PRELOAD RETRY
+# ============================================================
+
+def preload_area(
+    lane,
+    area_start,
+    area_end
+):
+
+    """
+    区間中央へTPしたあと、
+    その周辺の代表地点をgetblockして
+    ワールドデータが来ているか確認する。
+    """
+
+    sx, sy, sz = lane["start"]
+
+    test_distances = [
+
+        area_start,
+
+        min(
+            area_start + 50,
+            area_end - 1
+        ),
+
+        min(
+            area_start + 100,
+            area_end - 1
+        ),
+
+        min(
+            area_start + 150,
+            area_end - 1
+        ),
+
+        area_end - 1
+    ]
+
+    test_distances = list(
+        dict.fromkeys(
+            test_distances
+        )
+    )
+
+    for attempt in range(
+        GROUND_RETRY_COUNT
+    ):
+
+        success_count = 0
+
+        for distance in test_distances:
+
+            x = (
+                sx
+                + FX * distance
+            )
+
+            z = (
+                sz
+                + FZ * distance
+            )
+
+            try:
+
+                # getblockで実際にアクセス
+                block = m.getblock(
+                    x,
+                    lane["last_y"],
+                    z
+                )
+
+                if isinstance(
+                    block,
+                    str
+                ):
+
+                    success_count += 1
+
+            except Exception:
+
+                pass
+
+        # 全地点アクセスできた
+        if (
+            success_count
+            == len(test_distances)
+        ):
+
+            return True
+
+        time.sleep(
+            GROUND_RETRY_WAIT
+        )
+
+    return False
+
+
+# ============================================================
+# GENERATE ONE 200 BLOCK AREA
 # ============================================================
 
 def generate_area(
-    lanes,
-    start_distance,
-    end_distance
+    state,
+    area_start,
+    area_end
 ):
+
+    lanes = state["lanes"]
 
     m.echo(
         "================================"
@@ -1228,8 +1303,8 @@ def generate_area(
 
     m.echo(
         f"AREA "
-        f"{start_distance}-"
-        f"{end_distance}"
+        f"{area_start}-"
+        f"{area_end}"
     )
 
     m.echo(
@@ -1240,38 +1315,85 @@ def generate_area(
         "================================"
     )
 
+    area_start_time = time.time()
 
-    area_start = time.time()
+    # ========================================================
+    # SPECTATOR TP
+    # ========================================================
 
+    #
+    # 5レーンの中央付近へ移動
+    #
+    # レーン間隔が2なので
+    # whiteの中央付近で十分
+    #
 
-    current = start_distance
+    first_lane = lanes[0]
 
+    spectator_tp_to_area(
+        first_lane,
+        area_start,
+        area_end
+    )
 
-    while current < end_distance:
+    # ========================================================
+    # PRELOAD
+    # ========================================================
 
-        slice_end = min(
-            current + GROUND_SLICE,
-            end_distance
+    preload_ok = preload_area(
+        first_lane,
+        area_start,
+        area_end
+    )
+
+    if not preload_ok:
+
+        m.echo(
+            "GROUND LOAD FAILED"
         )
 
+        return False
 
-        slice_start = time.time()
+    # ========================================================
+    # 50 BLOCK SLICES
+    # ========================================================
 
+    current = area_start
+
+    while current < area_end:
+
+        slice_end = min(
+            current + SLICE_LENGTH,
+            area_end
+        )
+
+        slice_start_time = (
+            time.time()
+        )
+
+        m.echo(
+            f"GROUND "
+            f"{slice_end}/"
+            f"{area_end}"
+        )
 
         # ====================================================
-        # 5 LANES
+        # FIRST: ALL 5 LANES GROUND
         # ====================================================
+
+        height_data = []
 
         for lane in lanes:
 
-            success = generate_slice(
-                lane,
-                current,
-                slice_end
+            heights = (
+                generate_lane_heights(
+                    lane,
+                    current,
+                    slice_end
+                )
             )
 
-
-            if not success:
+            if heights is None:
 
                 m.echo(
                     "================================"
@@ -1283,8 +1405,16 @@ def generate_area(
 
                 m.echo(
                     f"AREA "
-                    f"{start_distance}-"
-                    f"{end_distance}"
+                    f"{area_start}-"
+                    f"{area_end}"
+                )
+
+                m.echo(
+                    f"distance={current}"
+                )
+
+                m.echo(
+                    f"lane={lane['color']}"
                 )
 
                 m.echo(
@@ -1293,41 +1423,89 @@ def generate_area(
 
                 return False
 
+            height_data.append(
+                heights
+            )
 
         # ====================================================
-        # PROGRESS
+        # SECOND: ALL 5 LANES BUILD
+        # ====================================================
+
+        for index, lane in enumerate(
+            lanes
+        ):
+
+            success = (
+                apply_lane_heights(
+                    lane,
+                    height_data[index],
+                    current,
+                    slice_end
+                )
+            )
+
+            if not success:
+
+                return False
+
+        # ====================================================
+        # SAVE
         # ====================================================
 
         current = slice_end
 
+        state[
+            "current_length"
+        ] = current
+
+        state[
+            "lanes"
+        ] = lanes
+
+        save_state(
+            state
+        )
 
         elapsed = round(
             time.time()
-            - slice_start,
+            - slice_start_time,
             3
         )
-
 
         m.echo(
             f"GROUND "
             f"{current}/"
-            f"{end_distance} "
+            f"{area_end} "
             f"| {elapsed}s"
         )
 
+    # ========================================================
+    # AREA COMPLETE
+    # ========================================================
 
     area_elapsed = round(
         time.time()
-        - area_start,
+        - area_start_time,
         2
     )
 
+    m.echo(
+        "================================"
+    )
 
     m.echo(
         f"AREA COMPLETE "
-        f"| {area_elapsed}s"
+        f"{area_start}-"
+        f"{area_end}"
     )
 
+    m.echo(
+        f"TIME : {area_elapsed}s"
+    )
+
+    m.echo(
+        "================================"
+    )
 
     return True
 
@@ -1338,21 +1516,20 @@ def generate_area(
 
 def generate_course():
 
-    save_player_position()
-
+    save_player_state()
 
     state = load_state()
 
-
     current = (
-        state["current_length"]
+        state.get(
+            "current_length",
+            0
+        )
     )
-
 
     lanes = (
         state["lanes"]
     )
-
 
     # ========================================================
     # TIME LOG
@@ -1362,18 +1539,23 @@ def generate_course():
         TIME_FILE
     ):
 
-        with open(
-            TIME_FILE,
-            "r",
-            encoding="utf-8"
-        ) as f:
+        try:
 
-            time_log = json.load(f)
+            with open(
+                TIME_FILE,
+                "r",
+                encoding="utf-8"
+            ) as f:
+
+                time_log = json.load(f)
+
+        except Exception:
+
+            time_log = {}
 
     else:
 
         time_log = {}
-
 
     # ========================================================
     # HEADER
@@ -1388,7 +1570,7 @@ def generate_course():
     )
 
     m.echo(
-        "VERSION : v0.5.01"
+        "VERSION : v0.6.00"
     )
 
     m.echo(
@@ -1397,6 +1579,10 @@ def generate_course():
 
     m.echo(
         f"Area    : {AREA_LENGTH}"
+    )
+
+    m.echo(
+        f"Slice   : {SLICE_LENGTH}"
     )
 
     m.echo(
@@ -1412,76 +1598,43 @@ def generate_course():
     )
 
     m.echo(
+        "Ground  : GETBLOCKLIST"
+    )
+
+    m.echo(
         "================================"
     )
 
-
     total_start = time.time()
-
-
-    # ========================================================
-    # SPECTATOR
-    # ========================================================
-
-    m.execute(
-        "gamemode spectator"
-    )
-
-    time.sleep(
-        0.3
-    )
-
 
     try:
 
+        m.execute(
+            "gamemode spectator"
+        )
+
+        time.sleep(
+            0.3
+        )
+
         # ====================================================
-        # AREA LOOP
+        # 200 BLOCK AREA LOOP
         # ====================================================
 
         while current < TOTAL_LENGTH:
+
+            area_start = current
 
             area_end = min(
                 current + AREA_LENGTH,
                 TOTAL_LENGTH
             )
 
-
-            # =================================================
-            # PRELOAD
-            # =================================================
-
-            m.echo(
-                "================================"
-            )
-
-            m.echo(
-                f"PRELOAD "
-                f"{current}-"
-                f"{area_end}"
-            )
-
-            m.echo(
-                "================================"
-            )
-
-
-            preload_area(
-                lanes,
-                current,
-                area_end
-            )
-
-
-            # =================================================
-            # GENERATE
-            # =================================================
-
             success = generate_area(
-                lanes,
-                current,
+                state,
+                area_start,
                 area_end
             )
-
 
             # =================================================
             # FAILED
@@ -1491,17 +1644,15 @@ def generate_course():
 
                 state[
                     "current_length"
-                ] = current
+                ] = area_start
 
                 state[
                     "lanes"
                 ] = lanes
 
-
                 save_state(
                     state
                 )
-
 
                 m.echo(
                     "================================"
@@ -1513,12 +1664,11 @@ def generate_course():
 
                 m.echo(
                     f"Resume from "
-                    f"{current}"
+                    f"{area_start}"
                 )
 
                 m.echo(
-                    "Run 'set' again "
-                    "to retry."
+                    "Run 'set' again to retry."
                 )
 
                 m.echo(
@@ -1527,13 +1677,11 @@ def generate_course():
 
                 return
 
-
             # =================================================
             # AREA COMPLETE
             # =================================================
 
             current = area_end
-
 
             state[
                 "current_length"
@@ -1543,23 +1691,19 @@ def generate_course():
                 "lanes"
             ] = lanes
 
-
             save_state(
                 state
             )
 
-
-            area_elapsed = round(
+            total_elapsed = round(
                 time.time()
                 - total_start,
                 2
             )
 
-
             time_log[
                 str(current)
-            ] = area_elapsed
-
+            ] = total_elapsed
 
             with open(
                 TIME_FILE,
@@ -1574,26 +1718,13 @@ def generate_course():
                     ensure_ascii=False
                 )
 
-
             m.echo(
-                "================================"
-            )
-
-            m.echo(
-                f"AREA COMPLETE "
+                f"PROGRESS "
                 f"{current}/"
-                f"{TOTAL_LENGTH}"
+                f"{TOTAL_LENGTH} "
+                f"| total "
+                f"{total_elapsed}s"
             )
-
-            m.echo(
-                f"TOTAL TIME "
-                f"{area_elapsed}s"
-            )
-
-            m.echo(
-                "================================"
-            )
-
 
         # ====================================================
         # COMPLETE
@@ -1604,7 +1735,6 @@ def generate_course():
             - total_start,
             2
         )
-
 
         m.echo(
             "================================"
@@ -1619,7 +1749,7 @@ def generate_course():
         )
 
         m.echo(
-            f"Lanes  : {LINE_COUNT}"
+            "Lanes  : 5"
         )
 
         m.echo(
@@ -1630,6 +1760,9 @@ def generate_course():
             "================================"
         )
 
+        # ----------------------------------------------------
+        # progress削除
+        # ----------------------------------------------------
 
         if os.path.exists(
             STATE_FILE
@@ -1639,8 +1772,11 @@ def generate_course():
                 STATE_FILE
             )
 
-
     finally:
+
+        # ====================================================
+        # RESTORE PLAYER
+        # ====================================================
 
         restore_player()
 
@@ -1663,9 +1799,7 @@ def reset_course():
 
     ]
 
-
     deleted = 0
-
 
     for file in files:
 
@@ -1683,7 +1817,6 @@ def reset_course():
 
             deleted += 1
 
-
     if deleted == 0:
 
         m.echo(
@@ -1694,6 +1827,10 @@ def reset_course():
 
         m.echo(
             "LineRace reset complete."
+        )
+
+        m.echo(
+            "World blocks were NOT deleted."
         )
 
         m.echo(
@@ -1723,19 +1860,15 @@ if __name__ == "__main__":
 
         sys.exit()
 
-
     command = sys.argv[1]
-
 
     if command == "set":
 
         generate_course()
 
-
     elif command == "reset":
 
         reset_course()
-
 
     else:
 
