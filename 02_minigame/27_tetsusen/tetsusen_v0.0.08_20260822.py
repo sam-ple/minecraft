@@ -181,28 +181,28 @@ on inventory click:
             set {_gui} to chest inventory with 1 row named "&6必要個数を選択"
 
 
-            set slot 1 of {_gui} to iron ingot named "&f&l50個"
-            set lore of slot 1 of {_gui} to "&750個でCLEAR"
+            set slot 1 of {_gui} to iron ingot named "&f&l10個"
+            set lore of slot 1 of {_gui} to "&710個でCLEAR"
 
 
             set slot 2 of {_gui} to iron ingot named "&f&l100個"
             set lore of slot 2 of {_gui} to "&7100個でCLEAR"
 
 
-            set slot 3 of {_gui} to iron ingot named "&f&l150個"
-            set lore of slot 3 of {_gui} to "&7150個でCLEAR"
+            set slot 3 of {_gui} to iron ingot named "&f&l200個"
+            set lore of slot 3 of {_gui} to "&7200個でCLEAR"
 
 
-            set slot 4 of {_gui} to iron ingot named "&f&l200個"
-            set lore of slot 4 of {_gui} to "&7200個でCLEAR"
+            set slot 4 of {_gui} to iron ingot named "&f&l300個"
+            set lore of slot 4 of {_gui} to "&7300個でCLEAR"
 
 
-            set slot 5 of {_gui} to iron ingot named "&f&l300個"
-            set lore of slot 5 of {_gui} to "&7300個でCLEAR"
+            set slot 5 of {_gui} to iron ingot named "&f&l500個"
+            set lore of slot 5 of {_gui} to "&7500個でCLEAR"
 
 
-            set slot 6 of {_gui} to iron ingot named "&f&l500個"
-            set lore of slot 6 of {_gui} to "&7500個でCLEAR"
+            set slot 6 of {_gui} to iron ingot named "&f&l1000個"
+            set lore of slot 6 of {_gui} to "&71000個でCLEAR"
 
 
             open {_gui} to player
@@ -375,7 +375,7 @@ on inventory click:
 
         if clicked slot is 1:
 
-            set {_required} to 50
+            set {_required} to 10
 
         else if clicked slot is 2:
 
@@ -383,19 +383,19 @@ on inventory click:
 
         else if clicked slot is 3:
 
-            set {_required} to 150
+            set {_required} to 200
 
         else if clicked slot is 4:
 
-            set {_required} to 200
+            set {_required} to 300
 
         else if clicked slot is 5:
 
-            set {_required} to 300
+            set {_required} to 500
 
         else if clicked slot is 6:
 
-            set {_required} to 500
+            set {_required} to 1000
 
         else:
 
