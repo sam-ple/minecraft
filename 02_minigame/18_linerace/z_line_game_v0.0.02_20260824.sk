@@ -1,0 +1,470 @@
+# ============================================================
+# LINERACE GAME SYSTEM
+# Version : v0.1.00
+#
+# Commands
+#   /line
+#
+# GUI
+#   SET
+#   START
+#   RESET
+#
+# Features
+#   ・スタートボタンでレーン選択
+#   ・プレイヤーとレーンを紐付け
+#   ・STARTでゲーム開始
+#   ・レーンから横に逸れたら死亡
+#
+# ============================================================
+
+
+# ============================================================
+# LOAD
+# ============================================================
+
+on load:
+
+    set {linerace.running} to false
+    set {linerace.setup} to false
+
+    delete {linerace.player::*}
+    delete {linerace.lane.player::*}
+    delete {linerace.start.x::*}
+    delete {linerace.start.y::*}
+    delete {linerace.start.z::*}
+    delete {linerace.start.world::*}
+
+    send "&aLineRace System loaded." to console
+
+
+# ============================================================
+# MAIN GUI
+# ============================================================
+
+command /line:
+
+    permission: op
+
+    trigger:
+
+        set {_gui} to chest inventory with 1 row named "&6&lLineRace"
+
+        # SET
+        set slot 1 of {_gui} to emerald named "&a&lSET"
+        set lore of slot 1 of {_gui} to "&7スタート地点を選択します。"
+
+        # START
+        set slot 3 of {_gui} to diamond named "&e&lSTART"
+        set lore of slot 3 of {_gui} to "&7LineRaceを開始します。"
+
+        # RESET
+        set slot 5 of {_gui} to barrier named "&c&lRESET"
+        set lore of slot 5 of {_gui} to "&7レーン登録をリセットします。"
+
+        open {_gui} to player
+
+
+# ============================================================
+# MAIN GUI CLICK
+# ============================================================
+
+on inventory click:
+
+    if name of event-inventory is "&6&lLineRace":
+
+        cancel event
+
+
+        # ====================================================
+        # SET
+        # ====================================================
+
+        if clicked slot is 1:
+
+            close player's inventory
+
+            if {linerace.running} is true:
+
+                send "&cゲーム中はSETできません。" to player
+                stop
+
+
+            set {linerace.setup} to true
+
+            send "" to all players
+            send "&a&l==============================" to all players
+            send "&a&l          LineRace SET" to all players
+            send "&eスタート地点のボタンを押してください。" to all players
+            send "&a&l==============================" to all players
+            send "" to all players
+
+            stop
+
+
+        # ====================================================
+        # START
+        # ====================================================
+
+        if clicked slot is 3:
+
+            close player's inventory
+
+            if {linerace.running} is true:
+
+                send "&cLineRaceはすでに開始しています。" to player
+                stop
+
+
+            if {linerace.setup} is not true:
+
+                send "&c先にSETを行ってください。" to player
+                stop
+
+
+            # -----------------------------------------------
+            # 参加者確認
+            # -----------------------------------------------
+
+            set {_count} to 0
+
+            loop all players:
+
+                if {linerace.player::%loop-player%} is set:
+
+                    add 1 to {_count}
+
+
+            if {_count} is 0:
+
+                send "&c参加プレイヤーがいません。" to player
+                stop
+
+
+            # -----------------------------------------------
+            # ゲーム開始
+            # -----------------------------------------------
+
+            set {linerace.running} to true
+            set {linerace.setup} to false
+
+
+            # -----------------------------------------------
+            # 各プレイヤーをスタート地点へ
+            # -----------------------------------------------
+
+            loop all players:
+
+                if {linerace.player::%loop-player%} is set:
+
+                    set {_p} to loop-player
+
+                    set {_x} to {linerace.start.x::%{_p}%}
+                    set {_y} to {linerace.start.y::%{_p}%}
+                    set {_z} to {linerace.start.z::%{_p}%}
+
+
+                    # リスポーン地点
+                    execute console command "spawnpoint %{_p}% %{_x}% %{_y}% %{_z}%"
+
+
+                    # TP
+                    teleport {_p} to location({_x}, {_y}, {_z}, {linerace.start.world::%{_p}%})
+
+
+            # -----------------------------------------------
+            # START
+            # -----------------------------------------------
+
+            send title "&6&l3" with subtitle "&f" to all players
+            wait 1 second
+
+            send title "&e&l2" with subtitle "&f" to all players
+            wait 1 second
+
+            send title "&a&l1" with subtitle "&f" to all players
+            wait 1 second
+
+            send title "&b&lGO!" with subtitle "&fLineRace START!" to all players
+
+            send "" to all players
+            send "&6&l==============================" to all players
+            send "&e&l        LINERACE START!" to all players
+            send "&6&l==============================" to all players
+            send "" to all players
+
+            stop
+
+
+        # ====================================================
+        # RESET
+        # ====================================================
+
+        if clicked slot is 5:
+
+            close player's inventory
+
+            set {linerace.running} to false
+            set {linerace.setup} to false
+
+            delete {linerace.player::*}
+            delete {linerace.lane.player::*}
+            delete {linerace.start.x::*}
+            delete {linerace.start.y::*}
+            delete {linerace.start.z::*}
+            delete {linerace.start.world::*}
+
+            send "" to all players
+            send "&c&l==============================" to all players
+            send "&c&l        LINERACE RESET" to all players
+            send "&fレーン登録をリセットしました。" to all players
+            send "&c&l==============================" to all players
+            send "" to all players
+
+            stop
+
+
+# ============================================================
+# LANE SELECT
+# ============================================================
+
+on right click on stone button:
+
+    cancel event
+
+
+    # ========================================================
+    # SETモードでなければ何もしない
+    # ========================================================
+
+    if {linerace.setup} is not true:
+
+        stop
+
+
+    # ========================================================
+    # すでにレーン選択済み
+    # ========================================================
+
+    if {linerace.player::%player%} is set:
+
+        send "&cあなたはすでにレーンを選択しています。" to player
+        stop
+
+
+    # ========================================================
+    # BUTTON POSITION
+    # ========================================================
+
+    set {_buttonX} to floor(x-coordinate of event-block)
+    set {_buttonY} to floor(y-coordinate of event-block)
+    set {_buttonZ} to floor(z-coordinate of event-block)
+
+
+    # ========================================================
+    # CONCRETE
+    #
+    # Python側のコース生成仕様
+    #
+    # button = concrete の Z-1
+    # ========================================================
+
+    set {_concreteX} to {_buttonX}
+    set {_concreteY} to {_buttonY}
+    set {_concreteZ} to {_buttonZ} + 1
+
+
+    # ========================================================
+    # CONCRETE COLOR
+    # ========================================================
+
+    set {_concrete} to block at location({_concreteX}, {_concreteY}, {_concreteZ}, world of event-block)
+
+
+    if {_concrete} is white concrete:
+
+        set {_color} to "white"
+
+    else if {_concrete} is orange concrete:
+
+        set {_color} to "orange"
+
+    else if {_concrete} is light blue concrete:
+
+        set {_color} to "light_blue"
+
+    else if {_concrete} is lime concrete:
+
+        set {_color} to "lime"
+
+    else if {_concrete} is yellow concrete:
+
+        set {_color} to "yellow"
+
+    else:
+
+        send "&cLineRaceのスタート地点ではありません。" to player
+        stop
+
+
+    # ========================================================
+    # CHECK COLOR ALREADY USED
+    # ========================================================
+
+    if {linerace.lane.player::%{_color}%} is set:
+
+        send "&cこのレーンはすでに使用されています。" to player
+        stop
+
+
+    # ========================================================
+    # START POSITION
+    #
+    # コンクリートではなく、
+    # その先の羊毛をスタート地点とする
+    #
+    # concrete:
+    #   Z
+    #
+    # start wool:
+    #   Z + 1
+    # ========================================================
+
+    set {_startX} to floor({_concreteX})
+    set {_startY} to floor({_concreteY}) + 1
+    set {_startZ} to floor({_concreteZ}) + 1
+
+
+    # ========================================================
+    # SAVE PLAYER
+    # ========================================================
+
+    set {linerace.player::%player%} to {_color}
+
+
+    # ========================================================
+    # SAVE LANE
+    # ========================================================
+
+    set {linerace.lane.player::%{_color}%} to player
+
+
+    # ========================================================
+    # SAVE START POSITION
+    # ========================================================
+
+    set {linerace.start.x::%player%} to {_startX}
+    set {linerace.start.y::%player%} to {_startY}
+    set {linerace.start.z::%player%} to {_startZ}
+    set {linerace.start.world::%player%} to world of event-block
+
+
+    # ========================================================
+    # SET RESPAWN
+    # ========================================================
+
+    execute console command "spawnpoint %player% %{_startX}% %{_startY}% %{_startZ}%"
+
+
+    # ========================================================
+    # TELEPORT
+    # ========================================================
+
+    teleport player to location({_startX}, {_startY}, {_startZ}, world of event-block)
+
+
+    # ========================================================
+    # MESSAGE
+    # ========================================================
+
+    send "&a&lレーン登録完了！" to player
+    send "&7レーン: &f%{_color}%" to player
+    send "&7スタート: &f%{_startX}%, %{_startY}%, %{_startZ}%" to player
+
+    send "&e%player% &7→ &f%{_color}% &7レーン" to all players
+
+
+# ============================================================
+# LANE DEVIATION CHECK
+# ============================================================
+
+every 2 ticks:
+
+    if {linerace.running} is true:
+
+        loop all players:
+
+            if {linerace.player::%loop-player%} is not set:
+
+                continue
+
+
+            set {_p} to loop-player
+
+
+            # =================================================
+            # START POSITION
+            # =================================================
+
+            set {_sx} to {linerace.start.x::%{_p}%}
+            set {_sz} to {linerace.start.z::%{_p}%}
+
+
+            # =================================================
+            # PLAYER POSITION
+            # =================================================
+
+            set {_px} to x-coordinate of {_p}
+            set {_pz} to z-coordinate of {_p}
+
+
+            # =================================================
+            # FORWARD
+            #
+            # Z+方向なので
+            # 横方向 = X
+            # =================================================
+
+            set {_lateral} to {_px} - {_sx}
+
+
+            # =================================================
+            # 横ズレ許容
+            #
+            # レーン幅は2ブロック
+            # 中心から1ブロック程度まで許容
+            #
+            # ここでは 1.0 ブロック
+            # =================================================
+
+            if {_lateral} < -1:
+
+                kill {_p}
+
+                send "&c%{_p}% がレーンから逸脱しました！" to all players
+
+
+            else if {_lateral} > 1:
+
+                kill {_p}
+
+                send "&c%{_p}% がレーンから逸脱しました！" to all players
+
+
+# ============================================================
+# RESPAWN EVENT
+# ============================================================
+
+on respawn:
+
+    if {linerace.running} is not true:
+
+        stop
+
+
+    if {linerace.player::%player%} is not set:
+
+        stop
+
+
+    send "&e%player% がスタート地点に戻りました。" to all players

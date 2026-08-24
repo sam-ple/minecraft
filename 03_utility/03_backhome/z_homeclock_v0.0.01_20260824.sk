@@ -1,0 +1,55 @@
+# ============================================================
+# CLOCK HOME TP
+# ============================================================
+
+options:
+    cooldown: 5 seconds
+
+
+# ============================================================
+# SET HOME
+# /homeclock set
+# ============================================================
+
+command /homeclock [<text>]:
+    permission: op
+    trigger:
+
+        if arg-1 is "set":
+
+            set {clockhome} to location of player
+
+            send "&aホーム座標を設定しました。" to player
+            send "&7X: %{clockhome}'s x-coordinate%" to player
+            send "&7Y: %{clockhome}'s y-coordinate%" to player
+            send "&7Z: %{clockhome}'s z-coordinate%" to player
+
+        else:
+
+            send "&e/homeclock set &7- 現在位置をホームに設定"
+
+
+# ============================================================
+# CLOCK RIGHT CLICK
+# ============================================================
+
+on right click:
+
+    if player's tool is clock:
+
+        cancel event
+
+        if {clockhome} is not set:
+            send "&cホーム座標が設定されていません。" to player
+            stop
+
+        if {clocktp::%uuid of player%} is set:
+            if difference between now and {clocktp::%uuid of player%} < {@cooldown}:
+                send "&cまだクールタイム中です。" to player
+                stop
+
+        teleport player to {clockhome}
+
+        set {clocktp::%uuid of player%} to now
+
+        send "&aホームに戻りました。" to player
