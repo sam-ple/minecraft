@@ -1,9 +1,6 @@
 # ============================================================
 # JINRO RPG SYSTEM
-# Version : v0.1.02
-#
-# Minecraft : Java / Paper
-# Script    : Skript
+# Version : v0.1.03
 #
 # MINIMUM TEST VERSION
 #
@@ -15,19 +12,19 @@
 #   現在のワールドを人狼RPG用に初期化
 #
 # /jinro uninit
-#   人狼RPG用の環境設定を解除
+#   人狼RPG環境を解除
 #
 # /jinro set
-#   看板登録モード ON
+#   看板登録モード
 #
 # /jinro unset
-#   看板登録解除モード ON
+#   看板登録解除モード
 #
 # /jinro start
 #   ゲーム開始
 #
 # /jinro stop
-#   ゲーム強制終了
+#   ゲーム停止
 #
 # ============================================================
 
@@ -38,7 +35,7 @@
 
 options:
 
-    # STARTボタンの下に置くブロック
+    # STARTボタンの下
     start-block: crying obsidian
 
     # 最初の昼
@@ -51,10 +48,7 @@ options:
     night-time: 120
 
     # スケルトン最大数
-    skeleton-max: 30
-
-    # スケルトン補充間隔
-    skeleton-interval: 5
+    skeleton-max: 10
 
     # 人狼人数
     wolf-count: 1
@@ -66,25 +60,17 @@ options:
 
 on load:
 
-    # ゲーム中の一時データのみ初期化
     set {jinro.running} to false
     set {jinro.phase} to "none"
-
-    delete {jinro.alive::*}
-    delete {jinro.dead::*}
-    delete {jinro.role::*}
 
     set {jinro.setup-mode} to false
     set {jinro.unset-mode} to false
 
-    # 設定データ
-    # {jinro.world}
-    # {jinro.sign-player::*}
-    # {jinro.player-sign::*}
-    # {jinro.start-buttons::*}
-    # は消さない
+    delete {jinro.players::*}
+    delete {jinro.role::*}
+    delete {jinro.alive::*}
 
-    send "&7[JINRO] v0.1.02 Loaded."
+    send "&7[JINRO] v0.1.03 Loaded."
 
 
 # ============================================================
@@ -97,19 +83,15 @@ command /jinro [<text>]:
 
     trigger:
 
-        # ------------------------------------------------------
-        # HELP
-        # ------------------------------------------------------
-
         if arg-1 is not set:
 
             send "&6===== JINRO RPG ====="
             send "&e/jinro init &7- ステージ初期化"
             send "&e/jinro uninit &7- 初期状態へ戻す"
-            send "&e/jinro set &7- 看板登録モード"
-            send "&e/jinro unset &7- 看板解除モード"
+            send "&e/jinro set &7- 看板登録"
+            send "&e/jinro unset &7- 看板登録解除"
             send "&e/jinro start &7- ゲーム開始"
-            send "&e/jinro stop &7- ゲーム強制終了"
+            send "&e/jinro stop &7- ゲーム停止"
             send "&6===================="
 
             stop
@@ -121,12 +103,8 @@ command /jinro [<text>]:
 
         if arg-1 is "init":
 
-            if {jinro.running} is true:
-
-                send "&c[JINRO] ゲーム中はinitできません。"
-                stop
-
             jinroInit(player)
+
             stop
 
 
@@ -136,12 +114,8 @@ command /jinro [<text>]:
 
         if arg-1 is "uninit":
 
-            if {jinro.running} is true:
-
-                send "&c[JINRO] ゲーム中はuninitできません。"
-                stop
-
             jinroUninit(player)
+
             stop
 
 
@@ -192,6 +166,7 @@ command /jinro [<text>]:
         if arg-1 is "start":
 
             jinroStart(player)
+
             stop
 
 
@@ -201,12 +176,8 @@ command /jinro [<text>]:
 
         if arg-1 is "stop":
 
-            if {jinro.running} is false:
+            jinroStop(player)
 
-                send "&e[JINRO] ゲームは開始されていません。"
-                stop
-
-            jinroStop()
             stop
 
 
@@ -216,7 +187,22 @@ command /jinro [<text>]:
 
 function jinroInit(p: player):
 
+    if {jinro.running} is true:
+
+        send "&c[JINRO] ゲーム中はinitできません。" to {_p}
+        stop
+
+
+    # ----------------------------------------------------------
+    # ワールド登録
+    # ----------------------------------------------------------
+
     set {jinro.world} to world of {_p}
+
+
+    # ----------------------------------------------------------
+    # 状態初期化
+    # ----------------------------------------------------------
 
     set {jinro.running} to false
     set {jinro.phase} to "none"
@@ -237,7 +223,7 @@ function jinroInit(p: player):
 
 
     # ----------------------------------------------------------
-    # 時間固定
+    # 時間
     # ----------------------------------------------------------
 
     execute console command "execute in %{jinro.world}% run time set day"
@@ -246,7 +232,7 @@ function jinroInit(p: player):
 
 
     # ----------------------------------------------------------
-    # 天候固定
+    # 天候
     # ----------------------------------------------------------
 
     execute console command "execute in %{jinro.world}% run weather clear"
@@ -255,34 +241,31 @@ function jinroInit(p: player):
 
 
     # ----------------------------------------------------------
-    # モブ自然スポーン停止
+    # モブスポーン
     # ----------------------------------------------------------
 
     execute console command "execute in %{jinro.world}% run gamerule doMobSpawning false"
 
 
     # ----------------------------------------------------------
-    # 現在のモブ削除
+    # モブ削除
     # ----------------------------------------------------------
 
     execute console command "execute in %{jinro.world}% run kill @e[type=!player]"
 
 
     # ----------------------------------------------------------
-    # ロビー表示
+    # メッセージ
     # ----------------------------------------------------------
 
-    jinroUpdateLobbyScoreboard()
-
-
-    send "&a================================"
-    send "&a[JINRO] ステージを初期化しました。"
-    send "&fWorld          : %{jinro.world}%"
-    send "&fAdventure      : ON"
-    send "&fDaylight Cycle : OFF"
-    send "&fWeather Cycle  : OFF"
-    send "&fMob Spawning   : OFF"
-    send "&a================================"
+    send "&a================================" to {_p}
+    send "&a[JINRO] ステージを初期化しました。" to {_p}
+    send "&fWorld          : %{jinro.world}%" to {_p}
+    send "&fAdventure      : ON" to {_p}
+    send "&fDaylight Cycle : OFF" to {_p}
+    send "&fWeather Cycle  : OFF" to {_p}
+    send "&fMob Spawning   : OFF" to {_p}
+    send "&a================================" to {_p}
 
 
 # ============================================================
@@ -297,13 +280,16 @@ function jinroUninit(p: player):
         stop
 
 
+    if {jinro.running} is true:
+
+        jinroStop({_p})
+
+
     # ----------------------------------------------------------
-    # ゲーム関連停止
+    # スケルトン削除
     # ----------------------------------------------------------
 
     jinroRemoveSkeletons()
-
-    execute console command "bossbar remove jinro:main"
 
 
     # ----------------------------------------------------------
@@ -328,7 +314,7 @@ function jinroUninit(p: player):
 
 
     # ----------------------------------------------------------
-    # プレイヤーをSurvivalへ
+    # プレイヤーをSurvival
     # ----------------------------------------------------------
 
     loop all players:
@@ -339,10 +325,17 @@ function jinroUninit(p: player):
 
 
     # ----------------------------------------------------------
-    # スコアボード
+    # データ削除
     # ----------------------------------------------------------
 
-    jinroRemoveLobbyScoreboard()
+    delete {jinro.players::*}
+    delete {jinro.role::*}
+    delete {jinro.alive::*}
+
+    delete {jinro.sign-player::*}
+    delete {jinro.player-sign::*}
+
+    delete {jinro.start-buttons::*}
 
 
     # ----------------------------------------------------------
@@ -357,30 +350,66 @@ function jinroUninit(p: player):
 
     delete {jinro.world}
 
+
     send "&e[JINRO] 人狼RPG環境を解除しました。" to {_p}
 
 
 # ============================================================
-# SIGN REGISTER
+# SIGN CLICK
+#
+# 看板専用イベントを使わず、
+# 通常の右クリックイベントで判定する。
 # ============================================================
 
-on right click on sign:
+on right click:
 
-    # ========================================================
-    # SET MODE
-    # ========================================================
+    if {jinro.running} is true:
 
-    if {jinro.setup-mode} is true:
-
-        cancel event
+        stop
 
 
-        if {jinro.running} is true:
+    if {jinro.setup-mode} is false:
+
+        if {jinro.unset-mode} is false:
+
             stop
 
 
+    # ----------------------------------------------------------
+    # クリックしたブロックを取得
+    # ----------------------------------------------------------
+
+    set {_block} to event-block
+
+
+    if {_block} is air:
+
+        stop
+
+
+    # ----------------------------------------------------------
+    # 看板かどうかを文字列で判定
+    # ----------------------------------------------------------
+
+    set {_type} to "%type of {_block}%"
+
+
+    if {_type} does not contain "sign":
+
+        stop
+
+
+    cancel event
+
+
+    # ==========================================================
+    # SET
+    # ==========================================================
+
+    if {jinro.setup-mode} is true:
+
         # ------------------------------------------------------
-        # プレイヤーの既存登録確認
+        # 既存登録確認
         # ------------------------------------------------------
 
         if {jinro.player-sign.%uuid of player%} is set:
@@ -388,24 +417,14 @@ on right click on sign:
             set {_old} to {jinro.player-sign.%uuid of player%}
 
 
-            # 同じ看板
-            if {_old} is event-block:
-
-                send "&e[JINRO] すでにこの看板に登録されています。"
-                stop
-
-
-            # --------------------------------------------------
-            # 古い看板を解除
-            # --------------------------------------------------
-
+            # 古い看板を初期化
             set line 1 of {_old} to "人狼RPG"
             set line 2 of {_old} to ""
             set line 3 of {_old} to ""
             set line 4 of {_old} to ""
 
 
-            # 古いヘッド削除
+            # ヘッド削除
             set block above {_old} to air
 
 
@@ -417,59 +436,39 @@ on right click on sign:
         # 新規登録
         # ------------------------------------------------------
 
-        set {jinro.sign-player.%location of event-block%} to uuid of player
-        set {jinro.player-sign.%uuid of player%} to event-block
+        set {jinro.sign-player.%location of {_block}%} to uuid of player
+        set {jinro.player-sign.%uuid of player%} to {_block}
 
 
         # ------------------------------------------------------
-        # 看板表示
+        # 看板
         # ------------------------------------------------------
 
-        set line 1 of event-block to "人狼RPG"
-        set line 2 of event-block to ""
-        set line 3 of event-block to "%name of player%"
-        set line 4 of event-block to ""
+        set line 1 of {_block} to "人狼RPG"
+        set line 2 of {_block} to ""
+        set line 3 of {_block} to "%name of player%"
+        set line 4 of {_block} to ""
 
 
         # ------------------------------------------------------
         # プレイヤーヘッド
         # ------------------------------------------------------
 
-        set block above event-block to player head
+        set block above {_block} to player head
 
 
-        # ------------------------------------------------------
-        # プレイヤーヘッドのプロフィール
-        # ------------------------------------------------------
-
-        set {_headX} to x-coordinate of block above event-block
-        set {_headY} to y-coordinate of block above event-block
-        set {_headZ} to z-coordinate of block above event-block
-
-        execute console command "execute in %{jinro.world}% run data merge block %{_headX}% %{_headY}% %{_headZ}% {profile:{name:""%name of player%""}}"
-
-
-        send "&a[JINRO] &f%name of player% &aを登録しました。"
-
-        jinroUpdateLobbyScoreboard()
+        send "&a[JINRO] %name of player% を登録しました。"
 
         stop
 
 
-    # ========================================================
-    # UNSET MODE
-    # ========================================================
+    # ==========================================================
+    # UNSET
+    # ==========================================================
 
     if {jinro.unset-mode} is true:
 
-        cancel event
-
-
-        if {jinro.running} is true:
-            stop
-
-
-        set {_uuid} to {jinro.sign-player.%location of event-block%}
+        set {_uuid} to {jinro.sign-player.%location of {_block}%}
 
 
         if {_uuid} is not set:
@@ -479,73 +478,86 @@ on right click on sign:
 
 
         # ------------------------------------------------------
-        # ヘッド削除
-        # ------------------------------------------------------
-
-        set block above event-block to air
-
-
-        # ------------------------------------------------------
         # 看板初期化
         # ------------------------------------------------------
 
-        set line 1 of event-block to "人狼RPG"
-        set line 2 of event-block to ""
-        set line 3 of event-block to ""
-        set line 4 of event-block to ""
+        set line 1 of {_block} to "人狼RPG"
+        set line 2 of {_block} to ""
+        set line 3 of {_block} to ""
+        set line 4 of {_block} to ""
+
+
+        # ------------------------------------------------------
+        # ヘッド削除
+        # ------------------------------------------------------
+
+        set block above {_block} to air
 
 
         # ------------------------------------------------------
         # データ削除
         # ------------------------------------------------------
 
-        delete {jinro.sign-player.%location of event-block%}
+        delete {jinro.sign-player.%location of {_block}%}
         delete {jinro.player-sign.%{_uuid}%}
 
 
         send "&e[JINRO] 参加登録を解除しました。"
-
-        jinroUpdateLobbyScoreboard()
 
         stop
 
 
 # ============================================================
 # START BUTTON
+#
+# 石ボタン
+#   ↓
+# crying obsidian
+#
+# になっている場合に開始。
 # ============================================================
 
-on right click on stone button:
+on right click:
 
     if {jinro.running} is true:
+
+        stop
+
+
+    if event-block is not stone button:
+
         stop
 
 
     set {_under} to block below event-block
 
 
-    if type of {_under} is {@start-block}:
+    if {_under} is not {@start-block}:
 
-        cancel event
-
-
-        # ------------------------------------------------------
-        # STARTボタン登録
-        # ------------------------------------------------------
-
-        if event-block is not in {jinro.start-buttons::*}:
-
-            add event-block to {jinro.start-buttons::*}
+        stop
 
 
-        # ------------------------------------------------------
-        # ゲーム開始
-        # ------------------------------------------------------
+    cancel event
 
-        jinroStart(player)
+
+    # ----------------------------------------------------------
+    # STARTボタン登録
+    # ----------------------------------------------------------
+
+    if event-block is not in {jinro.start-buttons::*}:
+
+        add event-block to {jinro.start-buttons::*}
+
+
+    # ----------------------------------------------------------
+    # ゲーム開始
+    # ----------------------------------------------------------
+
+    jinroStart(player)
 
 
 # ============================================================
-# START GAME
+# START
 # ============================================================
 
 function jinroStart(p: player):
@@ -555,10 +567,6 @@ function jinroStart(p: player):
         send "&c[JINRO] すでにゲーム中です。" to {_p}
         stop
 
-
-    # ----------------------------------------------------------
-    # 初期化チェック
-    # ----------------------------------------------------------
 
     if {jinro.world} is not set:
 
@@ -601,7 +609,7 @@ function jinroStart(p: player):
 
 
     # ----------------------------------------------------------
-    # 人狼人数チェック
+    # 人狼人数
     # ----------------------------------------------------------
 
     if {@wolf-count} > {_count}:
@@ -621,13 +629,8 @@ function jinroStart(p: player):
     set {jinro.unset-mode} to false
 
 
-    # ----------------------------------------------------------
-    # ゲームデータ初期化
-    # ----------------------------------------------------------
-
     delete {jinro.role::*}
     delete {jinro.alive::*}
-    delete {jinro.dead::*}
 
 
     # ----------------------------------------------------------
@@ -644,24 +647,19 @@ function jinroStart(p: player):
     # 人狼抽選
     # ----------------------------------------------------------
 
-    loop {@wolf-count} times:
+    set {_wolves} to {@wolf-count}
+
+
+    while {_wolves} > 0:
 
         set {_wolf} to random element out of {jinro.players::*}
 
 
-        while {jinro.role.%uuid of {_wolf}%} is "wolf":
+        if {jinro.role.%uuid of {_wolf}%} is not "wolf":
 
-            set {_wolf} to random element out of {jinro.players::*}
+            set {jinro.role.%uuid of {_wolf}%} to "wolf"
 
-
-        set {jinro.role.%uuid of {_wolf}%} to "wolf"
-
-
-    # ----------------------------------------------------------
-    # ロビースコアボード削除
-    # ----------------------------------------------------------
-
-    jinroRemoveLobbyScoreboard()
+            remove 1 from {_wolves}
 
 
     # ----------------------------------------------------------
@@ -672,7 +670,7 @@ function jinroStart(p: player):
 
         set gamemode of loop-value to survival
 
-        clear loop-value
+        clear inventory of loop-value
 
         heal loop-value
 
@@ -701,16 +699,16 @@ function jinroStart(p: player):
         set block at loop-value to air
 
 
-    # ----------------------------------------------------------
-    # 少し待つ
-    # ----------------------------------------------------------
+    send "&a[JINRO] ゲーム開始。" to {_p}
+
 
     wait 3 seconds
 
 
-    # ----------------------------------------------------------
-    # 初回昼
-    # ----------------------------------------------------------
+    if {jinro.running} is false:
+
+        stop
+
 
     jinroDay({@first-day})
 
@@ -722,6 +720,7 @@ function jinroStart(p: player):
 function jinroDay(seconds: number):
 
     if {jinro.running} is false:
+
         stop
 
 
@@ -743,30 +742,38 @@ function jinroDay(seconds: number):
 
 
     # ----------------------------------------------------------
-    # タイトル
+    # 表示
     # ----------------------------------------------------------
 
     loop {jinro.players::*}:
 
         if {jinro.alive.%uuid of loop-value%} is true:
 
-            send title "&f昼になりました。" with subtitle "" to loop-value for 2 seconds
+            send title "&f昼" with subtitle "" to loop-value for 2 seconds
 
 
     # ----------------------------------------------------------
-    # ボスバー
+    # タイマー
     # ----------------------------------------------------------
 
-    jinroRunBossbar(seconds)
+    set {_time} to {_seconds}
+
+
+    while {_time} > 0:
+
+        if {jinro.running} is false:
+
+            stop
+
+        wait 1 second
+
+        remove 1 from {_time}
 
 
     if {jinro.running} is false:
+
         stop
 
-
-    # ----------------------------------------------------------
-    # 夜
-    # ----------------------------------------------------------
 
     jinroNight({@night-time})
 
@@ -778,6 +785,7 @@ function jinroDay(seconds: number):
 function jinroNight(seconds: number):
 
     if {jinro.running} is false:
+
         stop
 
 
@@ -792,14 +800,14 @@ function jinroNight(seconds: number):
 
 
     # ----------------------------------------------------------
-    # タイトル
+    # 表示
     # ----------------------------------------------------------
 
     loop {jinro.players::*}:
 
         if {jinro.alive.%uuid of loop-value%} is true:
 
-            send title "&1夜になりました。" with subtitle "" to loop-value for 2 seconds
+            send title "&1夜" with subtitle "" to loop-value for 2 seconds
 
 
     # ----------------------------------------------------------
@@ -810,19 +818,27 @@ function jinroNight(seconds: number):
 
 
     # ----------------------------------------------------------
-    # ボスバー
+    # タイマー
     # ----------------------------------------------------------
 
-    jinroRunBossbar(seconds)
+    set {_time} to {_seconds}
+
+
+    while {_time} > 0:
+
+        if {jinro.running} is false:
+
+            stop
+
+        wait 1 second
+
+        remove 1 from {_time}
 
 
     if {jinro.running} is false:
+
         stop
 
-
-    # ----------------------------------------------------------
-    # 昼へ
-    # ----------------------------------------------------------
 
     jinroDay({@day-time})
 
@@ -834,56 +850,34 @@ function jinroNight(seconds: number):
 function jinroSpawnSkeletons():
 
     if {jinro.running} is false:
+
         stop
 
 
     if {jinro.phase} is not "night":
+
         stop
 
 
     # ----------------------------------------------------------
-    # 既存数
+    # 参加者からランダム選択
     # ----------------------------------------------------------
 
-    set {_count} to number of all skeletons in {jinro.world}
+    set {_target} to random element out of {jinro.players::*}
 
 
-    # ----------------------------------------------------------
-    # 最大数まで召喚
-    # ----------------------------------------------------------
+    if {_target} is not set:
 
-    if {_count} >= {@skeleton-max}:
         stop
 
 
-    set {_need} to {@skeleton-max} - {_count}
+    # ----------------------------------------------------------
+    # 5体召喚
+    # ----------------------------------------------------------
 
+    loop 5 times:
 
-    if {_need} > 5:
-
-        set {_need} to 5
-
-
-    loop {_need} times:
-
-        # ------------------------------------------------------
-        # ランダムな参加者付近
-        # ------------------------------------------------------
-
-        set {_target} to random element out of {jinro.players::*}
-
-
-        if {_target} is set:
-
-            execute console command "execute at %{_target}% run summon minecraft:skeleton ~ ~ ~ {PersistenceRequired:1b,Tags:[""jinro_skeleton""]}"
-
-
-            # 最新のスケルトンをHP2にする
-            execute console command "execute as @e[type=minecraft:skeleton,tag=jinro_skeleton,sort=nearest,limit=1] run data merge entity @s {Health:2.0f}"
-
-
-            # 弓を削除
-            execute console command "execute as @e[type=minecraft:skeleton,tag=jinro_skeleton,sort=nearest,limit=1] run item replace entity @s weapon.mainhand with air"
+        execute console command "execute at %{_target}% run summon minecraft:skeleton ~ ~ ~ {PersistenceRequired:1b,Tags:[""jinro_skeleton""]}"
 
 
 # ============================================================
@@ -893,31 +887,22 @@ function jinroSpawnSkeletons():
 on death of skeleton:
 
     if {jinro.running} is false:
+
         stop
 
 
     if {jinro.phase} is not "night":
+
         stop
 
-
-    # ----------------------------------------------------------
-    # 人狼RPGスケルトンか
-    # ----------------------------------------------------------
 
     if "%tags of victim%" does not contain "jinro_skeleton":
+
         stop
 
-
-    # ----------------------------------------------------------
-    # ドロップ削除
-    # ----------------------------------------------------------
 
     clear drops
 
-
-    # ----------------------------------------------------------
-    # 倒したプレイヤー
-    # ----------------------------------------------------------
 
     if attacker is a player:
 
@@ -935,23 +920,18 @@ on death of skeleton:
 on death of player:
 
     if {jinro.running} is false:
+
         stop
 
 
     if {jinro.alive.%uuid of victim%} is not true:
+
         stop
 
 
     set {jinro.alive.%uuid of victim%} to false
-    set {jinro.dead.%uuid of victim%} to true
-
-
-    # ----------------------------------------------------------
-    # ドロップ禁止
-    # ----------------------------------------------------------
 
     clear drops
-
 
     send "&c死亡しました。" to victim
 
@@ -1002,10 +982,12 @@ on place:
 on spawn of monster:
 
     if {jinro.world} is not set:
+
         stop
 
 
     if world of event-entity is not {jinro.world}:
+
         stop
 
 
@@ -1016,16 +998,18 @@ on spawn of monster:
     if {jinro.running} is false:
 
         cancel event
+
         stop
 
 
     # ----------------------------------------------------------
-    # 昼
+    # 夜以外
     # ----------------------------------------------------------
 
     if {jinro.phase} is not "night":
 
         cancel event
+
         stop
 
 
@@ -1039,231 +1023,27 @@ on spawn of monster:
 
 
 # ============================================================
-# BOSSBAR
-# ============================================================
-
-function jinroRunBossbar(seconds: number):
-
-    execute console command "bossbar remove jinro:main"
-
-    execute console command "bossbar add jinro:main {""text"":""""}"
-
-    execute console command "bossbar set jinro:main max %seconds%"
-
-    execute console command "bossbar set jinro:main value %seconds%"
-
-    execute console command "bossbar set jinro:main style progress"
-
-    execute console command "bossbar set jinro:main color white"
-
-    execute console command "bossbar set jinro:main players @a"
-
-
-    loop seconds times:
-
-        if {jinro.running} is false:
-            stop
-
-
-        wait 1 second
-
-
-        set {_remaining} to seconds - loop-number
-
-
-        if {_remaining} < 0:
-
-            set {_remaining} to 0
-
-
-        execute console command "bossbar set jinro:main value %{_remaining}%"
-
-
-    execute console command "bossbar remove jinro:main"
-
-
-# ============================================================
-# WIN CHECK
-# ============================================================
-
-every 1 second:
-
-    if {jinro.running} is false:
-        stop
-
-
-    # ----------------------------------------------------------
-    # 1人テストでは勝敗判定しない
-    # ----------------------------------------------------------
-
-    if size of {jinro.players::*} <= 1:
-        stop
-
-
-    set {_wolves} to 0
-    set {_villagers} to 0
-
-
-    loop {jinro.players::*}:
-
-        if {jinro.alive.%uuid of loop-value%} is true:
-
-            if {jinro.role.%uuid of loop-value%} is "wolf":
-
-                add 1 to {_wolves}
-
-            else:
-
-                add 1 to {_villagers}
-
-
-    # ----------------------------------------------------------
-    # 人狼全滅
-    # ----------------------------------------------------------
-
-    if {_wolves} <= 0:
-
-        jinroWin("villager")
-        stop
-
-
-    # ----------------------------------------------------------
-    # 村人全滅
-    # ----------------------------------------------------------
-
-    if {_villagers} <= 0:
-
-        jinroWin("wolf")
-        stop
-
-
-# ============================================================
-# WIN
-# ============================================================
-
-function jinroWin(winner: text):
-
-    if {jinro.running} is false:
-        stop
-
-
-    set {jinro.running} to false
-    set {jinro.phase} to "result"
-
-
-    # ----------------------------------------------------------
-    # スケルトン
-    # ----------------------------------------------------------
-
-    jinroRemoveSkeletons()
-
-
-    # ----------------------------------------------------------
-    # ボスバー
-    # ----------------------------------------------------------
-
-    execute console command "bossbar remove jinro:main"
-
-
-    # ----------------------------------------------------------
-    # 昼
-    # ----------------------------------------------------------
-
-    execute console command "execute in %{jinro.world}% run time set day"
-
-
-    # ----------------------------------------------------------
-    # 勝利表示
-    # ----------------------------------------------------------
-
-    if {_winner} is "wolf":
-
-        loop {jinro.players::*}:
-
-            send title "&c人狼の勝利" with subtitle "" to loop-value for 4 seconds
-
-    else:
-
-        loop {jinro.players::*}:
-
-            send title "&a村人の勝利" with subtitle "" to loop-value for 4 seconds
-
-
-    wait 4 seconds
-
-
-    # ----------------------------------------------------------
-    # 役職開示
-    # ----------------------------------------------------------
-
-    loop {jinro.players::*}:
-
-        if {jinro.role.%uuid of loop-value%} is "wolf":
-
-            broadcast "&c%name of loop-value% &7→ &c人狼"
-
-        else:
-
-            broadcast "&a%name of loop-value% &7→ &a村人"
-
-
-    # ----------------------------------------------------------
-    # Adventure
-    # ----------------------------------------------------------
-
-    loop {jinro.players::*}:
-
-        set gamemode of loop-value to adventure
-
-
-    # ----------------------------------------------------------
-    # ゲームデータ削除
-    # ----------------------------------------------------------
-
-    delete {jinro.alive::*}
-    delete {jinro.dead::*}
-    delete {jinro.role::*}
-
-
-    set {jinro.phase} to "none"
-
-
-    # ----------------------------------------------------------
-    # STARTボタン復活
-    # ----------------------------------------------------------
-
-    jinroRestoreStartButtons()
-
-
-    # ----------------------------------------------------------
-    # ロビー表示
-    # ----------------------------------------------------------
-
-    jinroUpdateLobbyScoreboard()
-
-
-# ============================================================
 # STOP
 # ============================================================
 
-function jinroStop():
+function jinroStop(p: player):
+
+    if {jinro.running} is false:
+
+        send "&e[JINRO] ゲームは開始されていません。" to {_p}
+
+        stop
+
 
     set {jinro.running} to false
     set {jinro.phase} to "stopped"
 
 
     # ----------------------------------------------------------
-    # スケルトン
+    # スケルトン削除
     # ----------------------------------------------------------
 
     jinroRemoveSkeletons()
-
-
-    # ----------------------------------------------------------
-    # ボスバー
-    # ----------------------------------------------------------
-
-    execute console command "bossbar remove jinro:main"
 
 
     # ----------------------------------------------------------
@@ -1283,51 +1063,29 @@ function jinroStop():
 
         set gamemode of loop-value to adventure
 
-        send title "&cゲーム終了" with subtitle "&7ゲームを終了しました。" to loop-value for 3 seconds
-
-
-    # ----------------------------------------------------------
-    # 役職表示
-    # ----------------------------------------------------------
-
-    loop {jinro.players::*}:
-
-        if {jinro.role.%uuid of loop-value%} is "wolf":
-
-            broadcast "&c%name of loop-value% &7→ &c人狼"
-
-        else:
-
-            broadcast "&a%name of loop-value% &7→ &a村人"
+        send title "&cゲーム終了" with subtitle "" to loop-value for 3 seconds
 
 
     # ----------------------------------------------------------
     # データ削除
     # ----------------------------------------------------------
 
-    delete {jinro.alive::*}
-    delete {jinro.dead::*}
+    delete {jinro.players::*}
     delete {jinro.role::*}
+    delete {jinro.alive::*}
 
 
     # ----------------------------------------------------------
-    # STARTボタン
+    # STARTボタン復活
     # ----------------------------------------------------------
 
     jinroRestoreStartButtons()
 
 
-    # ----------------------------------------------------------
-    # ロビー表示
-    # ----------------------------------------------------------
-
-    jinroUpdateLobbyScoreboard()
-
-
     set {jinro.phase} to "none"
 
 
-    broadcast "&e[JINRO] ゲームを終了しました。"
+    send "&e[JINRO] ゲームを終了しました。" to {_p}
 
 
 # ============================================================
@@ -1337,6 +1095,7 @@ function jinroStop():
 function jinroRemoveSkeletons():
 
     if {jinro.world} is not set:
+
         stop
 
 
@@ -1349,61 +1108,11 @@ function jinroRemoveSkeletons():
 
 function jinroRestoreStartButtons():
 
-    if {jinro.world} is not set:
-        stop
-
-
     loop {jinro.start-buttons::*}:
 
         set block at loop-value to stone button
 
 
 # ============================================================
-# LOBBY SCOREBOARD
+# END
 # ============================================================
-
-function jinroUpdateLobbyScoreboard():
-
-    if {jinro.running} is true:
-        stop
-
-
-    if {jinro.world} is not set:
-        stop
-
-
-    # ----------------------------------------------------------
-    # 参加人数
-    # ----------------------------------------------------------
-
-    set {_count} to size of {jinro.sign-player::*}
-
-
-    # ----------------------------------------------------------
-    # 全プレイヤー
-    # ----------------------------------------------------------
-
-    loop all players:
-
-        if world of loop-player is {jinro.world}:
-
-            execute console command "scoreboard objectives remove jinro_lobby"
-
-            execute console command "scoreboard objectives add jinro_lobby dummy ""JINRO RPG"""
-
-            execute console command "scoreboard objectives setdisplay sidebar jinro_lobby"
-
-            execute console command "scoreboard players set ""Participants"" jinro_lobby %{_count}%"
-
-            execute console command "scoreboard players set ""Werewolves"" jinro_lobby {@wolf-count}%"
-
-
-# ============================================================
-# REMOVE LOBBY SCOREBOARD
-# ============================================================
-
-function jinroRemoveLobbyScoreboard():
-
-    execute console command "scoreboard objectives setdisplay sidebar"
-
-    execute console command "scoreboard objectives remove jinro_lobby"
