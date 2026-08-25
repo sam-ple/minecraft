@@ -1,0 +1,1428 @@
+============================================================
+TETSUSEN GAME SYSTEM
+Development Handoff / Master Prompt
+============================================================
+
+Minecraft Java Edition + Paper + Skript + MineScript で
+「鉄千（TETSUSEN）」というミニゲームを開発している。
+
+このプロンプトは、別スレッドでも現在の設計・仕様・既存コード・
+開発方針をそのまま引き継ぐためのもの。
+
+今後コードを変更するときは、以下を「現行仕様・基準」とすること。
+
+============================================================
+1. GAME CONCEPT
+============================================================
+
+鉄千は、5つの焼き場（炉）を使って鉄を集めるタイムアタックゲーム。
+
+各プレイヤーが5つの焼き場のうち1つを選択する。
+
+選択した焼き場にはプレイヤー専用のシェルカーがあり、
+そのシェルカー内に入った「鉄インゴット」の数量をゲーム中に監視する。
+
+ゲーム開始後、
+
+    必要個数に到達
+        ↓
+    そのプレイヤーだけCLEAR
+        ↓
+    CLEAR時点の時間を記録
+
+する。
+
+1人がCLEARしてもゲーム全体は終了しない。
+他のプレイヤーはそのままゲームを続行する。
+
+管理者がSTOPすると、その時点で全員の結果を表示する。
+
+============================================================
+2. SYSTEM ARCHITECTURE
+============================================================
+
+MineScript
+    ↓
+「ステージを作るだけ」
+
+Skript
+    ↓
+「ゲームを管理する」
+
+役割分担：
+
+MineScript
+・フィールド整地
+・5つの焼き場生成
+・シェルカー生成
+・シェルカー前の石ボタン生成
+・ホッパー生成
+・溶鉱炉生成
+・ビーコン生成
+・チェスト生成
+・物資投入
+・松明設置
+・装飾猫設置
+
+Skript
+・焼き場選択
+・プレイヤーと焼き場の紐付け
+・プレイヤーヘッド表示
+・巨大プレイヤーヘッド表示
+・GUIによる管理
+・ゲーム開始
+・カウントダウン
+・タイマー
+・鉄インゴット数監視
+・アクションバー表示
+・個別CLEAR
+・CLEAR時間記録
+・30分ごとの経過時間表示
+・STOP時結果表示
+・RESET
+・将来的なforceload
+・将来的な順位処理など
+
+重要：
+MineScript側ではゲームロジックを持たない。
+Skript側ではステージ生成をしない。
+
+============================================================
+3. DEVELOPMENT POLICY
+============================================================
+
+今後のミニゲーム開発では、
+
+    ① まずコマンド方式でゲームロジックを作る
+    ② 実際に動作確認
+    ③ 問題を潰す
+    ④ 最後にGUI化
+
+という順序を基本とする。
+
+今回の鉄千も、
+最初は
+
+    /tetsusen set
+    /tetsusen start <必要個数>
+    /tetsusen stop
+    /tetsusen reset
+
+でゲーム本体を作り、
+その後GUI化した。
+
+今後もこの方式を優先する。
+
+GUIは「ゲーム本体」ではなく「操作パネル」として扱う。
+
+============================================================
+4. MINECRAFT ENVIRONMENT
+============================================================
+
+Minecraft Java Edition
+Paper Server
+Skript 2.16.1
+Skript Addons: None
+Dependencies: None
+
+Minecraft Server Version:
+26.2-112-c9e894d
+MC: 26.2
+
+重要：
+Skript標準機能だけで動くことを優先する。
+アドオン前提にはしない。
+
+============================================================
+5. MINECRAFT STAGE
+============================================================
+
+ステージは5つの焼き場で構成される。
+
+色：
+
+    red
+    blue
+    green
+    yellow
+    purple
+
+つまり、
+
+    赤焼き場
+    青焼き場
+    緑焼き場
+    黄焼き場
+    紫焼き場
+
+の5つ。
+
+焼き場offset：
+
+    -12
+    -6
+    0
+    6
+    12
+
+============================================================
+6. STATION STRUCTURE
+============================================================
+
+各焼き場の中心となるシェルカー：
+
+    minecraft:{color}_shulker_box[facing=north]
+
+シェルカー座標：
+
+    base_x
+    base_y
+    base_z
+
+シェルカー前面の石ボタン：
+
+    X = base_x
+    Y = base_y
+    Z = base_z - 1
+
+Minecraft生成時：
+
+    minecraft:stone_button[facing=north]
+
+重要：
+Skriptでボタンを判定するときは、
+
+    ボタンの south 側にあるブロック
+
+がシェルカー。
+
+つまり、
+
+    block south of event-block
+
+でシェルカーを取得する。
+
+============================================================
+7. STATION SELECTION
+============================================================
+
+Skriptでは、
+
+    on right click on stone button
+
+を使う。
+
+処理：
+
+    石ボタンを右クリック
+        ↓
+    ボタン南側のブロック取得
+        ↓
+    シェルカーか確認
+        ↓
+    シェルカーの色判定
+        ↓
+    プレイヤーと色を紐付け
+        ↓
+    プレイヤーとシェルカーを紐付け
+        ↓
+    ボタン削除
+        ↓
+    通常プレイヤーヘッド設置
+        ↓
+    空中巨大プレイヤーヘッド設置
+
+現在の変数：
+
+    {tetsusen.station::%player%}
+        プレイヤー → 色
+
+    {tetsusen.station.player::%color%}
+        色 → プレイヤー
+
+    {tetsusen.shulker::%player%}
+        プレイヤー → シェルカー
+
+============================================================
+8. PLAYER HEAD
+============================================================
+
+現在の実動作仕様では、
+通常プレイヤーヘッドは、
+
+    シェルカー + Y1
+
+に配置する。
+
+つまり、
+
+    X = shulker X
+    Y = shulker Y + 1
+    Z = shulker Z
+
+Skript：
+
+    set {_headLocation} to location of {_shulker}
+    add 1 to y-coordinate of {_headLocation}
+
+    set block at {_headLocation} to player head
+    set skull owner of block at {_headLocation} to player
+
+重要：
+以前MineScriptの旧set2ではY+2だったが、
+現在の実動作版SkriptではY+1を使用している。
+今後は勝手にY+2へ戻さない。
+
+通常HEAD位置は保存：
+
+    {tetsusen.head::%player%}
+
+============================================================
+9. BIG PLAYER HEAD
+============================================================
+
+選択時に空中に巨大プレイヤーヘッドを表示する。
+
+位置：
+
+    X = shulker X
+    Y = shulker Y + 10
+    Z = shulker Z + 2
+
+item_displayで生成。
+
+タグ：
+
+    tetsusen_big_head
+
+Scale：
+
+    [6f,6f,1f]
+
+現在の処理：
+
+    summon minecraft:item_display ...
+
+    data modify entity
+    @e[tag=tetsusen_big_head,...]
+    transformation.scale
+    set value [6f,6f,1f]
+
+巨大HEAD位置は、
+
+    {tetsusen.bighead.location::%player%}
+
+に保存する。
+
+============================================================
+10. BUTTON DELETE / RESET
+============================================================
+
+焼き場選択時：
+
+    set event-block to air
+
+でボタンを消す。
+
+RESET時のボタン復元は、
+現在実際に動作確認済みの方法を基準とする。
+
+つまり、
+
+    set {_buttonLocation} to location of {_shulker}
+    remove 1 from z-coordinate of {_buttonLocation}
+    set block at {_buttonLocation} to stone button
+
+を使う。
+
+重要：
+過去に、
+
+    execute console command "setblock ... facing=north"
+
+などに変更したときに問題が出た。
+
+そのため今後は、
+「動作確認済みの上記のSkript方式」を優先する。
+
+MineScript側の元配置は、
+
+    X = shulker X
+    Y = shulker Y
+    Z = shulker Z - 1
+    facing=north
+
+だが、SkriptのRESETでは
+現在動作確認済みの
+
+    set block at {_buttonLocation} to stone button
+
+を使う。
+
+============================================================
+11. RESET
+============================================================
+
+RESETでやること：
+
+    ゲーム停止
+    countdown停止
+    setup解除
+
+選択済み焼き場について：
+
+    通常HEAD削除
+    ボタン復元
+
+全体：
+
+    巨大HEAD削除
+    scoreboard解除
+    変数削除
+
+削除する変数：
+
+    {tetsusen.station::*}
+    {tetsusen.station.player::*}
+    {tetsusen.shulker::*}
+
+    {tetsusen.button::*}
+    {tetsusen.head::*}
+    {tetsusen.bighead.location::*}
+
+    {tetsusen.required}
+    {tetsusen.time}
+
+    {tetsusen.clear::*}
+    {tetsusen.cleartime::*}
+    {tetsusen.finaliron::*}
+
+============================================================
+12. SET BEHAVIOR
+============================================================
+
+現在は管理GUIからSETを押す。
+
+SETには「自動RESET」の思想を採用している。
+
+つまり、
+
+    SET
+      ↓
+    前回の焼き場・HEAD等を初期化
+      ↓
+    新しい焼き場選択開始
+
+とする。
+
+ただし、
+
+    ゲーム中
+    カウントダウン中
+
+はSET禁止。
+
+SET後：
+
+    {tetsusen.setup} = true
+
+============================================================
+13. ADMIN GUI
+============================================================
+
+現在の管理操作は、
+
+    /tetsusen
+
+だけ。
+
+開くGUI：
+
+    &6TETSUSEN ADMIN
+
+スロット：
+
+    slot 1
+        emerald
+        SET
+
+    slot 3
+        diamond
+        START
+
+    slot 5
+        redstone
+        STOP
+
+    slot 7
+        barrier
+        RESET
+
+現在のGUIは以下の操作を行う。
+
+SET
+    ↓
+前回状態RESET
+    ↓
+焼き場選択可能
+
+START
+    ↓
+必要個数選択GUI
+
+STOP
+    ↓
+ゲーム停止
+    ↓
+全員結果表示
+
+RESET
+    ↓
+完全初期化
+
+============================================================
+14. REQUIRED IRON GUI
+============================================================
+
+STARTを押すと、
+
+    &6SELECT REQUIRED IRON
+
+GUIを開く。
+
+選択肢：
+
+    slot 1 = 10 IRON
+    slot 2 = 100 IRON
+    slot 3 = 200 IRON
+    slot 4 = 300 IRON
+    slot 5 = 500 IRON
+    slot 6 = 1000 IRON
+
+現在はこの6種類。
+
+必要個数は、
+
+    {tetsusen.required}
+
+に保存。
+
+将来的に変更可能。
+
+============================================================
+15. COUNTDOWN
+============================================================
+
+STARTで必要個数を選ぶと、
+
+    3
+    ↓
+    2
+    ↓
+    1
+    ↓
+    START!!
+
+となる。
+
+重要：
+ゲーム時間は3,2,1のカウントダウン中は進まない。
+
+実際に、
+
+    START!!
+
+を表示した瞬間に、
+
+    {tetsusen.running} = true
+    {tetsusen.time} = 0
+
+にする。
+
+つまり、
+記録タイムはSTART!!から。
+
+============================================================
+16. SOUND POLICY
+============================================================
+
+重要：
+
+「時間経過の30分アナウンスだけ無音」
+
+それ以外の演出音は今まで通り鳴らす。
+
+3:
+    pling
+
+2:
+    pling
+
+1:
+    pling
+
+START:
+    entity.player.levelup
+
+CLEAR:
+    ui.toast.challenge_complete
+    entity.player.levelup
+
+30分ごとの経過表示：
+    音なし
+
+STOP：
+    音なし
+
+今後音を追加・削除する場合はこの方針を維持する。
+
+============================================================
+17. GAME TIMER
+============================================================
+
+ゲーム中、
+
+    every 1 second
+
+を使用。
+
+    add 1 to {tetsusen.time}
+
+ゲーム時間は秒単位。
+
+例：
+
+    0:00:00
+    0:00:01
+    0:00:02
+
+など。
+
+============================================================
+18. IRON COUNT
+============================================================
+
+各プレイヤーに紐付いたシェルカーのインベントリを毎秒確認。
+
+    loop items in inventory of {_shulker}
+
+で、
+
+    iron ingot
+
+だけを合計する。
+
+参加者が5人なら、
+最大でも1秒ごとに5シェルカー × 27スロット程度の走査。
+
+現状規模では負荷は問題ないと考えている。
+
+============================================================
+19. SCOREBOARD
+============================================================
+
+objective：
+
+    iron_count
+    dummy
+
+ゲーム開始時に作成。
+
+プレイヤーごとの現在値を、
+
+    scoreboard players set PLAYER iron_count NUMBER
+
+で更新。
+
+sidebar表示：
+
+    scoreboard objectives setdisplay sidebar iron_count
+
+ゲーム停止・RESET時にsidebarを解除。
+
+============================================================
+20. ACTION BAR
+============================================================
+
+ゲーム中は各プレイヤー自身に、
+
+    IRON: CURRENT / REQUIRED
+
+をアクションバー表示。
+
+例：
+
+    IRON: 37 / 100
+
+重要：
+これは「自分自身」にだけ見える。
+
+CLEAR後もアクションバーの鉄数表示は継続する。
+ただしCLEAR判定は一度だけ。
+
+============================================================
+21. CLEAR SYSTEM
+============================================================
+
+各プレイヤーが、
+
+    current iron >= required iron
+
+になった瞬間に個別CLEAR。
+
+変数：
+
+    {tetsusen.clear::%player%} = true
+
+CLEAR時点の時間：
+
+    {tetsusen.cleartime::%player%}
+
+に保存。
+
+1人CLEARしても他プレイヤーのゲームは継続。
+
+============================================================
+22. CLEAR DISPLAY
+============================================================
+
+CLEAR時：
+
+全員にタイトル：
+
+    CLEAR!!
+
+サブタイトル：
+
+    PLAYER 0:00:00
+
+など。
+
+チャット：
+
+    ====================================
+                  CLEAR!!
+    PLAYER → 0:00:00
+    ====================================
+
+チャットは英語にする。
+
+日本語文言は将来変更できるようコメントアウトで残す。
+
+============================================================
+23. CLEAR PARTICLE
+============================================================
+
+CLEAR時にプレイヤー位置でfirework particle。
+
+現在：
+
+    execute at PLAYER run particle minecraft:firework ...
+
+============================================================
+24. 30-MINUTE ANNOUNCEMENT
+============================================================
+
+ゲーム時間が、
+
+    1800秒
+    3600秒
+    5400秒
+    ...
+
+になったら全員にタイトルを表示。
+
+例：
+
+    30 MINUTES
+    30 minutes have passed.
+
+    60 MINUTES
+    60 minutes have passed.
+
+音は鳴らさない。
+
+30分経過通知は邪魔にならないようにする。
+
+============================================================
+25. STOP RESULT
+============================================================
+
+STOPすると、
+
+    {tetsusen.running} = false
+
+sidebar解除。
+
+その後、全員の結果をチャット表示。
+
+例：
+
+    ========================================
+                  TETSUSEN RESULT
+    ========================================
+
+    crocado 100 IRON CLEAR 0:12:34
+    saaample 87 IRON NOT CLEARED
+    player3 100 IRON CLEAR 0:14:02
+
+    ========================================
+
+CLEAR者：
+
+    PLAYER
+    FINAL IRON
+    CLEAR TIME
+
+未CLEAR者：
+
+    PLAYER
+    FINAL IRON
+    NOT CLEARED
+
+現在の鉄数をSTOP時に改めてシェルカーから取得する。
+
+============================================================
+26. CHAT LANGUAGE POLICY
+============================================================
+
+通常のプレイヤー向けチャットは英語。
+
+例：
+
+    Please complete SET first.
+    The game is already running.
+    You cannot change your station during the game.
+    This station has already been selected.
+    TETSUSEN START!
+    Required: 100 IRON
+    TETSUSEN RESULT
+    NOT CLEARED
+
+日本語は将来変更用としてコメントアウトで残す。
+
+Skriptの最初の詳細コメントだけは日本語主体でよい。
+
+以降の実際のプレイヤー向けメッセージは英語。
+
+============================================================
+27. CURRENT MINE SCRIPT FILE
+============================================================
+
+ファイル：
+
+    tetsusen_stage.py
+
+MineScriptは「ステージ生成専用」。
+
+JSON保存なし。
+プレイヤーデータ保存なし。
+ゲームロジックなし。
+プレイヤーヘッド生成なし。
+forceloadなし。
+
+現在のコードは以下を基準とする。
+
+------------------------------------------------------------
+START OF MINE SCRIPT
+------------------------------------------------------------
+
+[ここに現在の tetsusen_stage.py をそのまま使用]
+
+------------------------------------------------------------
+END OF MINE SCRIPT
+------------------------------------------------------------
+
+============================================================
+28. CURRENT MINE SCRIPT FULL CODE
+============================================================
+
+import minescript as m
+import math
+
+
+COLORS = [
+    "red",
+    "blue",
+    "green",
+    "yellow",
+    "purple",
+]
+
+
+px, py, pz = m.player().position
+
+x = math.floor(px)
+y = math.floor(py)
+z = math.floor(pz)
+
+FRONT_Z = z + 5
+CHEST_Z = z - 2
+
+
+def flatten_area():
+
+    m.execute(
+        "gamerule send_command_feedback false"
+    )
+
+    m.execute("tp @p ~ ~ ~ 0 30")
+
+    x_min = x - 25
+    x_max = x + 25
+
+    z_min = z - 25
+    z_max = z + 25
+
+    m.execute(
+        f"fill "
+        f"{x_min} {y-1} {z_min} "
+        f"{x_max} {y-1} {z_max} "
+        f"minecraft:grass_block"
+    )
+
+    m.execute(
+        f"fill "
+        f"{x-25} {y} {z-25} "
+        f"{x+25} {y+9} {z+25} "
+        f"minecraft:air"
+    )
+
+    m.execute(
+        f"fill "
+        f"{x-25} {y+10} {z-25} "
+        f"{x+25} {y+20} {z+25} "
+        f"minecraft:air"
+    )
+
+    m.execute(
+        f"tp @e[tag=sitting_cat,"
+        f"x={x-25},y={y-5},z={z-25},"
+        f"dx=50,dy=10,dz=50] ~ ~20 ~"
+    )
+
+    m.execute(
+        f"kill @e[tag=sitting_cat,"
+        f"x={x-25},y={y+15},z={z-25},"
+        f"dx=50,dy=20,dz=50]"
+    )
+
+    m.execute(
+        f"kill @e[type=item,"
+        f"x={x-25},y={y-5},z={z-25},"
+        f"dx=50,dy=30,dz=50]"
+    )
+
+    m.execute(
+        f"kill @e[type=item_frame,"
+        f"x={x-25},y={y-5},z={z-25},"
+        f"dx=50,dy=30,dz=50]"
+    )
+
+    m.execute(
+        f"setworldspawn {x} {y} {z}"
+    )
+
+    m.execute(
+        f"spawnpoint @p {x} {y} {z}"
+    )
+
+    m.execute(
+        f"setblock {x} {y-1} {z} minecraft:gold_block"
+    )
+
+
+def build_furnace_system(offset_x, color):
+
+    base_x = x + offset_x
+    base_y = y
+    base_z = FRONT_Z
+
+    m.execute(
+        f"fill "
+        f"{base_x-2} {base_y-1} {base_z-1} "
+        f"{base_x+2} {base_y-1} {base_z+3} "
+        f"minecraft:{color}_concrete"
+    )
+
+    m.execute(
+        f"setblock "
+        f"{base_x} {base_y} {base_z} "
+        f"minecraft:{color}_shulker_box[facing=north]"
+    )
+
+    m.execute(
+        f"setblock "
+        f"{base_x} {base_y} {base_z-1} "
+        f"minecraft:stone_button[facing=north]"
+    )
+
+    m.execute(
+        f"setblock "
+        f"{base_x} {base_y} {base_z+1} "
+        f"minecraft:hopper[facing=north]"
+    )
+
+    m.execute(
+        f"setblock "
+        f"{base_x+1} {base_y} {base_z+1} "
+        f"minecraft:hopper[facing=west]"
+    )
+
+    m.execute(
+        f"setblock "
+        f"{base_x-1} {base_y} {base_z+1} "
+        f"minecraft:hopper[facing=east]"
+    )
+
+    m.execute(
+        f"setblock "
+        f"{base_x} {base_y} {base_z+2} "
+        f"minecraft:hopper[facing=north]"
+    )
+
+    m.execute(
+        f"setblock "
+        f"{base_x+1} {base_y+1} {base_z+1} "
+        f"minecraft:blast_furnace[facing=north]"
+    )
+
+    m.execute(
+        f"setblock "
+        f"{base_x} {base_y+1} {base_z+1} "
+        f"minecraft:blast_furnace[facing=north]"
+    )
+
+    m.execute(
+        f"setblock "
+        f"{base_x-1} {base_y+1} {base_z+1} "
+        f"minecraft:blast_furnace[facing=north]"
+    )
+
+    m.execute(
+        f"setblock "
+        f"{base_x} {base_y+1} {base_z+2} "
+        f"minecraft:hopper"
+    )
+
+    m.execute(
+        f"setblock "
+        f"{base_x} {base_y+2} {base_z+2} "
+        f"minecraft:blast_furnace[facing=north]"
+    )
+
+    beacon_x = base_x
+    beacon_z = base_z + 7
+
+    for xi in range(beacon_x - 1, beacon_x + 2):
+
+        for zi in range(beacon_z - 1, beacon_z + 2):
+
+            m.execute(
+                f"setblock "
+                f"{xi} {base_y-3} {zi} "
+                f"minecraft:iron_block"
+            )
+
+    m.execute(
+        f"setblock "
+        f"{beacon_x} {base_y-2} {beacon_z} "
+        f"minecraft:beacon"
+    )
+
+    m.execute(
+        f"setblock "
+        f"{beacon_x} {base_y-1} {beacon_z} "
+        f"minecraft:{color}_stained_glass"
+    )
+
+
+def place_all_chests_horizontal():
+
+    offsets_x = [
+        -8,
+        -5,
+        -2,
+        1,
+        4,
+        7
+    ]
+
+    contents = [
+        ("dried_kelp", 64),
+        ("dried_kelp", 64),
+        ("diamond_pickaxe", 1),
+        ("diamond_pickaxe", 1),
+        ("torch", 64),
+        ("torch", 64),
+    ]
+
+    for offset_x, content in zip(offsets_x, contents):
+
+        cx = x + offset_x
+        cy = y
+        cz = CHEST_Z
+
+        m.execute(
+            f"setblock "
+            f"{cx} {cy} {cz} "
+            f"minecraft:chest[facing=south,type=right]"
+        )
+
+        m.execute(
+            f"setblock "
+            f"{cx+1} {cy} {cz} "
+            f"minecraft:chest[facing=south,type=left]"
+        )
+
+        item_id, count = content
+
+        for slot in range(27):
+
+            if item_id == "diamond_pickaxe":
+
+                ench = (
+                    '[enchantments='
+                    '{"minecraft:efficiency":5,'
+                    '"minecraft:fortune":3}]'
+                )
+
+                m.execute(
+                    f'minecraft:item replace block '
+                    f'{cx} {cy} {cz} '
+                    f'container.{slot} '
+                    f'with minecraft:diamond_pickaxe'
+                    f'{ench} 1'
+                )
+
+                m.execute(
+                    f'minecraft:item replace block '
+                    f'{cx+1} {cy} {cz} '
+                    f'container.{slot} '
+                    f'with minecraft:diamond_pickaxe'
+                    f'{ench} 1'
+                )
+
+            else:
+
+                m.execute(
+                    f'minecraft:item replace block '
+                    f'{cx} {cy} {cz} '
+                    f'container.{slot} '
+                    f'with minecraft:{item_id} {count}'
+                )
+
+                m.execute(
+                    f'minecraft:item replace block '
+                    f'{cx+1} {cy} {cz} '
+                    f'container.{slot} '
+                    f'with minecraft:{item_id} {count}'
+                )
+
+        m.execute(
+            f'summon minecraft:item_frame '
+            f'{cx} {cy} {cz+1} '
+            f'{{Facing:3,Invisible:1b,'
+            f'Item:{{id:"minecraft:{item_id}",Count:1b}}}}'
+        )
+
+
+def place_torches():
+
+    for dx in range(21, -22, -6):
+
+        for dz in range(21, -22, -6):
+
+            m.execute(
+                f"setblock "
+                f"{x+dx} {y} {z+dz} "
+                f"minecraft:torch"
+            )
+
+
+def place_sitting_cats():
+
+    for dx in range(19, -18, -6):
+
+        for dz in range(19, -18, -6):
+
+            m.execute(
+                f"summon minecraft:cat "
+                f"{x+dx} {y} {z+dz} "
+                f'{{NoAI:1b,Sitting:1b,'
+                f'Silent:1b,Rotation:[180f,0f],'
+                f'Tags:["sitting_cat"]}}'
+            )
+
+
+def main():
+
+    flatten_area()
+
+    furnace_offsets = [
+        -12,
+        -6,
+        0,
+        6,
+        12
+    ]
+
+    for offset, color in zip(
+        furnace_offsets,
+        COLORS
+    ):
+
+        build_furnace_system(
+            offset,
+            color
+        )
+
+    place_all_chests_horizontal()
+
+    place_torches()
+
+    place_sitting_cats()
+
+    m.echo(
+        "TETSUSEN STAGE completed."
+    )
+
+
+main()
+
+============================================================
+29. CURRENT SKRIPT BASE
+============================================================
+
+現在のSkriptは Version 0.5.00 を基準とする。
+
+重要な現在仕様：
+
+・GUI管理
+・SET
+・START
+・STOP
+・RESET
+・必要個数GUI
+・3 / 2 / 1 / START
+・STARTからタイマー
+・各人の鉄数をアクションバー表示
+・CLEAR
+・CLEAR時間
+・30分タイトル
+・STOP時結果
+・CLEAR / START演出音あり
+・30分経過音なし
+・チャット英語
+・日本語はコメントとして残す
+
+============================================================
+30. CURRENT SKRIPT FULL CODE
+============================================================
+
+現在のv0.5.00 Skriptを基準にする。
+
+重要なロジックは以下。
+
+管理GUI：
+
+    command /tetsusen
+
+GUI：
+
+    slot 1 = SET
+    slot 3 = START
+    slot 5 = STOP
+    slot 7 = RESET
+
+必要個数GUI：
+
+    10
+    100
+    200
+    300
+    500
+    1000
+
+現在のステーション選択：
+
+    on right click on stone button
+
+シェルカー：
+
+    set {_shulker} to block south of event-block
+
+色：
+
+    red
+    blue
+    green
+    yellow
+    purple
+
+通常HEAD：
+
+    Y + 1
+
+巨大HEAD：
+
+    Y + 10
+    Z + 2
+    scale 6,6,1
+
+鉄カウント：
+
+    every 1 second
+
+アクションバー：
+
+    IRON: CURRENT / REQUIRED
+
+CLEAR：
+
+    current >= required
+
+CLEAR時間：
+
+    {tetsusen.cleartime::%player%}
+
+ゲーム時間：
+
+    {tetsusen.time}
+
+30分：
+
+    1800秒ごと
+
+STOP：
+
+    全員結果表示
+
+============================================================
+31. IMPORTANT CURRENT BUG / DESIGN NOTES
+============================================================
+
+現在の設計では、
+
+    reset / set
+
+で保存されたシェルカーだけを復元している。
+
+これは意図的。
+
+まだ選択されていない焼き場は、
+元々ボタンが存在するのでそのまま。
+
+選択された焼き場だけ、
+
+    ボタン削除
+    HEAD設置
+    巨大HEAD設置
+
+される。
+
+RESET時に、
+
+    HEAD削除
+    ボタン復元
+
+する。
+
+============================================================
+32. FORCELOAD
+============================================================
+
+将来的にforceloadをSkript側に追加予定。
+
+MineScriptにはforceloadを入れない。
+
+理由：
+
+    MineScript = stage generator
+    Skript = game runtime
+
+forceloadはゲーム開始時に開始し、
+ゲーム終了時/RESET時に解除する方向。
+
+まだ未実装。
+
+============================================================
+33. FUTURE FEATURES
+============================================================
+
+将来的に追加する可能性があるもの：
+
+・forceload
+・ゲーム終了条件
+・全員CLEAR時の自動STOP
+・順位表示
+・1位〜5位ランキング
+・CLEAR後の状態表示強化
+・管理GUIの見た目改善
+・任意の必要個数入力
+・参加者数チェック
+・参加者不足チェック
+・開始時のプレイヤー固定
+・ゲーム途中の退出処理
+・途中参加制限
+・プレイヤーごとの結果保存
+・リザルトGUI
+・タイトル演出強化
+・タイマー表示強化
+
+============================================================
+34. IMPORTANT DEVELOPMENT RULE
+============================================================
+
+既に動いている部分を不用意に変更しない。
+
+特に以下は実動作確認済み：
+
+    station selection
+    block south of button
+    shulker color detection
+    shulker inventory iron count
+    normal player head
+    big player head
+    button restore
+    scoreboard
+    clear system
+    clear timing
+    action bar
+    title
+    GUI
+
+新機能を追加するときは、
+
+    「既存ロジックは維持」
+    「追加部分だけ変更」
+
+を基本にする。
+
+コードを全面的に書き換える場合は、
+変更点を明示する。
+
+============================================================
+35. COMMUNICATION STYLE
+============================================================
+
+ユーザーはMinecraft/Skript/MineScriptの実装を実際にサーバー上で確認しながら進めている。
+
+そのため、
+
+・まず動くコードを出す
+・過度に抽象化しない
+・一度に大量の新技術を導入しない
+・Skript標準機能を優先
+・動作確認済みの構文を優先
+・エラーが出たら、そのエラーに対して最小限修正
+・既存コードの成功部分を壊さない
+
+こと。
+
+ユーザーはフルスクリプトを求めることが多い。
+その場合は部分コードではなく、統合済みのフルコードを提示する。
+
+============================================================
+END OF TETSUSEN MASTER PROMPT
+============================================================

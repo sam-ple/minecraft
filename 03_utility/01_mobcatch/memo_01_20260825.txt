@@ -1,0 +1,240 @@
+# Mob Capture System — Skript移植・改良用プロンプト
+
+Minecraft Paper + Skript環境で「Mob Capture System」を作成・改良してください。
+
+## 基本方針
+
+元システムはMinescript（Python）でMinecraftコマンドを制御して実装されていました。
+
+Python/Minescriptそのものを再現するのではなく、
+
+* Minecraft標準コマンドで実現していた処理は可能な限り維持
+* Pythonのループ・イベント検知・状態管理はSkriptへ置き換える
+* Skriptのイベントと定期処理を優先する
+* 不要なscoreboard監視やPython処理は削除する
+* 最終的にはSkript単体で動作する1ファイル構成にする
+
+という方針で実装してください。
+
+## 基本仕様
+
+プレイヤーが「にんじん付きの棒（carrot on a stick）」を持っている場合、一定間隔で視線の先を検査する。
+
+視線判定はMinecraft標準の相対座標を利用する。
+
+概念的には、
+
+execute as PLAYER at PLAYER anchored eyes positioned ^ ^ ^1.5
+
+によって、プレイヤーの目の位置から視線方向へ1.5ブロック進んだ位置を基準にする。
+
+その周辺約2ブロック以内に存在するMobを検出し、最も近い対象を現在のターゲットとする。
+
+プレイヤーごとに独立してターゲットを管理する。
+
+## 対象Mob
+
+以下のMobを捕獲対象とする。
+
+allay
+armadillo
+axolotl
+bat
+bee
+blaze
+bogged
+breeze
+camel
+cat
+cave_spider
+chicken
+cod
+cow
+creaking
+creeper
+dolphin
+donkey
+drowned
+elder_guardian
+ender_dragon
+enderman
+endermite
+evoker
+fox
+frog
+ghast
+glow_squid
+goat
+guardian
+hoglin
+horse
+husk
+iron_golem
+llama
+magma_cube
+mooshroom
+mule
+ocelot
+panda
+parrot
+phantom
+pig
+piglin
+piglin_brute
+pillager
+polar_bear
+pufferfish
+rabbit
+ravager
+salmon
+sheep
+shulker
+silverfish
+skeleton
+skeleton_horse
+slime
+sniffer
+snow_golem
+spider
+stray
+strider
+tadpole
+trader_llama
+tropical_fish
+turtle
+vex
+vindicator
+villager
+wandering_trader
+warden
+witch
+wither
+wither_skeleton
+wolf
+zoglin
+zombie
+zombie_horse
+zombified_piglin
+zombie_villager
+
+プレイヤー、armor stand、item、item frame、minecartなどは対象外とする。
+
+## ターゲット表示
+
+視線の先に対象Mobが存在する場合、そのMobをプレイヤーごとのターゲットとして保存する。
+
+ターゲットMobにはGlowingを付与する。
+
+さらにターゲットMobの頭上付近にhappy villagerパーティクルを表示する。
+
+プレイヤーが視線を別の場所へ移した場合、以前のターゲットを解除する。
+
+## 捕獲
+
+プレイヤーがcarrot on a stickを持って右クリックした場合、現在のターゲットを捕獲する。
+
+元システムではcarrot_on_a_stickの使用回数をscoreboardで監視して右クリックを検出していたが、Skriptでは `on right click` イベントを使用する。
+
+右クリックイベントは必要に応じてキャンセルする。
+
+## スポーンエッグ
+
+捕獲したMobに対応するスポーンエッグをプレイヤーへ1個与える。
+
+基本的な対応関係は、
+
+minecraft:cow → minecraft:cow_spawn_egg
+
+minecraft:zombie → minecraft:zombie_spawn_egg
+
+のように、Mob IDから対応するspawn egg IDを利用する。
+
+ただし、Minecraftに実際に存在しないスポーンエッグについては捕獲対象から除外する。
+
+## 捕獲演出
+
+捕獲成功時、
+
+* 全プレイヤーへ捕獲メッセージ
+* 捕獲対象Mob付近にportalパーティクル
+* プレイヤーへentity.enderman.teleportサウンド
+
+を再生する。
+
+メッセージにはプレイヤー名と捕獲したMob名を含める。
+
+## Mob削除
+
+捕獲時にMobの通常ドロップが発生しないようにする。
+
+元システムでは、
+
+DeathLootTable: "minecraft:empty"
+HandItems: []
+ArmorItems: []
+
+を設定してからMobを処理していた。
+
+その仕様を可能な限り維持する。
+
+その後、MobをY=-64へ移動させ、killする。
+
+## プレイヤー管理
+
+元Pythonでは、
+
+crocadooo
+saaample
+
+の2人だけを対象としていたが、Skript版では基本的に全プレイヤーを対象とする。
+
+特定プレイヤーだけに限定する必要がある場合は、設定として簡単に変更できる構造にする。
+
+## 定期処理
+
+視線判定は0.5秒程度の間隔で実行する。
+
+Pythonの、
+
+while True:
+...
+time.sleep(0.5)
+
+という構造は使用せず、Skriptの、
+
+every 10 ticks:
+
+などの定期イベントを使用する。
+
+## 状態管理
+
+可能な限りscoreboardを使用せず、Skriptの変数を利用する。
+
+例えば、
+
+{capture.target::%uuid of player%}
+
+のようにプレイヤーごとに現在のターゲットを保存する。
+
+プレイヤー退出時にはそのプレイヤーのターゲット情報を削除する。
+
+## 管理コマンド
+
+必要に応じて、
+
+/capture reload
+/capture clear
+
+などの管理機能を用意する。
+
+## 重要
+
+元Minescriptの仕様を勝手に削らない。
+
+ただし、Python固有の処理はSkript向けに置き換える。
+
+Skriptでより簡潔・安全に実現できる場合は改良してよい。
+
+最終回答では、説明だけでなく、実際にPaper + Skriptへ配置して使えるフルスクリプトを提示する。
+
+可能な限り1つの `.sk` ファイルで完結させる。
