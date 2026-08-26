@@ -1,6 +1,6 @@
 # ============================================================
 # LINERACE COURSE GENERATOR
-# Version : v0.9.00
+# Version : v0.9.02
 #
 # Minecraft Java Edition + Minescript
 #
@@ -14,14 +14,15 @@
 #   ・200ブロック単位で処理
 #   ・50ブロック単位で地形取得
 #   ・getblocklist()による高速探索
-#   ・失敗時のみgetblock()へフォールバック
-#   ・さらに失敗した場合は広範囲探索
+#   ・失敗時はgetblock()による強化探索
+#   ・地面候補を広く判定
 #   ・崖 / 坂 / 大きな段差対応
 #   ・地形の高さに追従
 #   ・地面の雪をウールに置換
 #   ・木 / 葉の上の雪は無視
 #   ・AREAごとのFORCELOAD
 #   ・前後1チャンクのバッファ
+#   ・FORCELOAD後にロード確認
 #   ・AREA完了後にFORCELOAD REMOVE
 #   ・Spectator TP不使用
 #   ・200ブロックごとに自動保存
@@ -54,16 +55,12 @@ import time
 
 LINE_COUNT = 5
 
-# レーン間隔
 BLOCK_SPACING = 2
 
-# コース全長
 TOTAL_LENGTH = 1000
 
-# 1回に処理する区間
 AREA_LENGTH = 200
 
-# 地形取得単位
 SLICE_LENGTH = 50
 
 
@@ -71,51 +68,43 @@ SLICE_LENGTH = 50
 # FORCELOAD SETTINGS
 # ============================================================
 
-# AREAの前後に確保するチャンク数
-#
-# 1 = 前後1チャンク
-#
-# 例えば
-#
-#   [buffer][AREA][buffer]
-#
-# とする。
-#
 FORCELOAD_BUFFER_CHUNKS = 1
 
-# forceload後のロード待機
-FORCELOAD_WAIT = 0.4
+FORCELOAD_WAIT = 1.5
 
-# forceload確認用リトライ
-FORCELOAD_RETRY_COUNT = 3
+FORCELOAD_RETRY_COUNT = 5
 
-FORCELOAD_RETRY_WAIT = 0.2
+FORCELOAD_RETRY_WAIT = 0.5
 
 
 # ============================================================
 # GROUND SEARCH SETTINGS
 # ============================================================
 
-# 通常時はgetblocklist()なので、
-# 過剰なリトライはしない。
 GROUND_RETRY_COUNT = 3
 
-GROUND_RETRY_WAIT = 0.1
+GROUND_RETRY_WAIT = 0.15
 
-FALLBACK_WAIT = 0.2
+FALLBACK_WAIT = 0.3
 
-DEEP_FALLBACK_WAIT = 0.3
+DEEP_FALLBACK_WAIT = 0.5
+
+# 通常探索
+FAST_SEARCH_UP = 16
+FAST_SEARCH_DOWN = 24
+
+# fallback
+FALLBACK_SEARCH_UP = 48
+FALLBACK_SEARCH_DOWN = 128
+
+# deep
+DEEP_SEARCH_UP = 96
+DEEP_SEARCH_DOWN = 192
 
 
 # ============================================================
 # DIRECTION
 # ============================================================
-
-# # 進行方向
-# FX, FZ = 0, 1
-
-# # 横方向
-# RX, RZ = 1, 0
 
 DIRECTION = "south"
 
@@ -128,9 +117,9 @@ DIRECTIONS = {
 
 FX, FZ = DIRECTIONS[DIRECTION]
 
-# 右方向
 RX = -FZ
 RZ = FX
+
 
 # ============================================================
 # COLORS
@@ -153,20 +142,44 @@ SURFACE_BLOCKS = {
 
     "minecraft:dirt",
     "minecraft:grass_block",
+
     "minecraft:sand",
     "minecraft:red_sand",
+
     "minecraft:gravel",
+
     "minecraft:stone",
     "minecraft:andesite",
     "minecraft:diorite",
     "minecraft:granite",
+
+    "minecraft:deepslate",
+
+    "minecraft:tuff",
+
+    "minecraft:calcite",
+
+    "minecraft:dripstone_block",
+
+    "minecraft:mud",
+
+    "minecraft:packed_mud",
+
     "minecraft:podzol",
     "minecraft:coarse_dirt",
+
+    "minecraft:moss_block",
+
     "minecraft:mossy_cobblestone",
+
+    "minecraft:cobblestone",
+
     "minecraft:dirt_path",
+
     "minecraft:mycelium",
 
-    # 雪
+    "minecraft:snow_block",
+
     "minecraft:snow",
 }
 
@@ -232,17 +245,41 @@ LEAF_BLOCKS = {
 
 
 # ============================================================
-# SEARCH SETTINGS
+# NON-GROUND BLOCKS
 # ============================================================
 
-FAST_SEARCH_UP = 12
-FAST_SEARCH_DOWN = 12
+NON_GROUND_BLOCKS = {
 
-FALLBACK_SEARCH_UP = 40
-FALLBACK_SEARCH_DOWN = 120
+    "minecraft:air",
+    "minecraft:cave_air",
+    "minecraft:void_air",
 
-DEEP_SEARCH_UP = 80
-DEEP_SEARCH_DOWN = 180
+    "minecraft:water",
+    "minecraft:lava",
+
+    "minecraft:kelp",
+    "minecraft:kelp_plant",
+
+    "minecraft:seagrass",
+    "minecraft:tall_seagrass",
+
+    "minecraft:grass",
+    "minecraft:fern",
+    "minecraft:large_fern",
+
+    "minecraft:vine",
+
+    "minecraft:torch",
+    "minecraft:wall_torch",
+
+    "minecraft:redstone_torch",
+    "minecraft:redstone_wall_torch",
+
+    "minecraft:fire",
+    "minecraft:soul_fire",
+
+    "minecraft:snow",
+}
 
 
 # ============================================================
@@ -282,19 +319,18 @@ def normalize_block(block):
 
 
 # ============================================================
-# SURFACE CHECK
+# IS SURFACE
 # ============================================================
 
 def is_surface(block):
 
-    return (
-        normalize_block(block)
-        in SURFACE_BLOCKS
-    )
+    block = normalize_block(block)
+
+    return block in SURFACE_BLOCKS
 
 
 # ============================================================
-# TREE CHECK
+# IS TREE / LEAF
 # ============================================================
 
 def is_tree_or_leaf(block):
@@ -305,6 +341,32 @@ def is_tree_or_leaf(block):
         block in WOOD_BLOCKS
         or block in LEAF_BLOCKS
     )
+
+
+# ============================================================
+# IS AIR
+# ============================================================
+
+def is_air(block):
+
+    block = normalize_block(block)
+
+    return block in {
+        "minecraft:air",
+        "minecraft:cave_air",
+        "minecraft:void_air"
+    }
+
+
+# ============================================================
+# IS WATER
+# ============================================================
+
+def is_water(block):
+
+    block = normalize_block(block)
+
+    return block == "minecraft:water"
 
 
 # ============================================================
@@ -533,17 +595,14 @@ def save_state(state):
 
 
 # ============================================================
-# SEARCH Y LIST
+# MAKE SEARCH Y
 # ============================================================
 
 def make_search_ys(last_y):
 
     ys = []
 
-    # ========================================================
-    # 近傍
-    # ========================================================
-
+    # まず現在地付近
     for dy in range(
         FAST_SEARCH_UP,
         -FAST_SEARCH_DOWN - 1,
@@ -555,10 +614,7 @@ def make_search_ys(last_y):
         )
 
 
-    # ========================================================
     # 上方向
-    # ========================================================
-
     for dy in range(
         FAST_SEARCH_UP + 1,
         FALLBACK_SEARCH_UP + 1
@@ -569,10 +625,7 @@ def make_search_ys(last_y):
         )
 
 
-    # ========================================================
     # 下方向
-    # ========================================================
-
     for dy in range(
         FAST_SEARCH_DOWN + 1,
         FALLBACK_SEARCH_DOWN + 1
@@ -582,7 +635,157 @@ def make_search_ys(last_y):
             last_y - dy
         )
 
-    return ys
+
+    # 重複削除
+    return list(
+        dict.fromkeys(
+            ys
+        )
+    )
+
+
+# ============================================================
+# CHECK SURFACE CANDIDATE
+# ============================================================
+
+def check_surface_candidate(
+    x,
+    y,
+    z
+):
+
+    try:
+
+        block = m.getblock(
+            x,
+            y,
+            z
+        )
+
+    except Exception:
+
+        return False
+
+
+    block_type = normalize_block(
+        block
+    )
+
+
+    # --------------------------------------------------------
+    # 明確な地面
+    # --------------------------------------------------------
+
+    if is_surface(
+        block_type
+    ):
+
+        # 雪の場合
+        if block_type == "minecraft:snow":
+
+            try:
+
+                below = m.getblock(
+                    x,
+                    y - 1,
+                    z
+                )
+
+                if is_tree_or_leaf(
+                    below
+                ):
+
+                    return False
+
+            except Exception:
+
+                pass
+
+
+        return True
+
+
+    # --------------------------------------------------------
+    # 木・葉は地面ではない
+    # --------------------------------------------------------
+
+    if is_tree_or_leaf(
+        block_type
+    ):
+
+        return False
+
+
+    # --------------------------------------------------------
+    # 水・溶岩は地面ではない
+    # --------------------------------------------------------
+
+    if is_water(
+        block_type
+    ):
+
+        return False
+
+    if block_type == "minecraft:lava":
+
+        return False
+
+
+    # --------------------------------------------------------
+    # 空気は地面ではない
+    # --------------------------------------------------------
+
+    if is_air(
+        block_type
+    ):
+
+        return False
+
+
+    # --------------------------------------------------------
+    # 明らかな非地面ブロック
+    # --------------------------------------------------------
+
+    if block_type in NON_GROUND_BLOCKS:
+
+        return False
+
+
+    # --------------------------------------------------------
+    # 一般ブロック
+    #
+    # 「その下が空気」なら地表候補
+    #
+    # これによりSURFACE_BLOCKSにない
+    # 自然地形ブロックにも対応
+    # --------------------------------------------------------
+
+    try:
+
+        below = m.getblock(
+            x,
+            y - 1,
+            z
+        )
+
+    except Exception:
+
+        return False
+
+
+    below_type = normalize_block(
+        below
+    )
+
+
+    if is_air(
+        below_type
+    ):
+
+        return False
+
+
+    return False
 
 
 # ============================================================
@@ -609,7 +812,10 @@ def find_surface_from_blocks(
         blocks
     ):
 
-        if not is_surface(block):
+        if not is_surface(
+            block
+        ):
+
             continue
 
 
@@ -619,10 +825,6 @@ def find_surface_from_blocks(
             block
         )
 
-
-        # ====================================================
-        # 雪
-        # ====================================================
 
         if block_type == (
             "minecraft:snow"
@@ -684,7 +886,32 @@ def get_surface_with_getblocklist(
             positions
         )
 
-    except Exception:
+    except Exception as e:
+
+        m.echo(
+            f"GETBLOCKLIST ERROR "
+            f"x={x} z={z} "
+            f"error={e}"
+        )
+
+        return None
+
+
+    if blocks is None:
+
+        return None
+
+
+    if len(blocks) != len(
+        search_ys
+    ):
+
+        m.echo(
+            f"GETBLOCKLIST LENGTH ERROR "
+            f"x={x} z={z} "
+            f"blocks={len(blocks)} "
+            f"expected={len(search_ys)}"
+        )
 
         return None
 
@@ -707,60 +934,45 @@ def find_surface_fallback(
     last_y
 ):
 
+    # --------------------------------------------------------
+    # まず現在の高さから下を優先
+    # --------------------------------------------------------
+
     for dy in range(
-        FALLBACK_SEARCH_UP,
+        8,
         -FALLBACK_SEARCH_DOWN - 1,
         -1
     ):
 
         y = last_y + dy
 
-        try:
-
-            block = m.getblock(
-                x,
-                y,
-                z
-            )
-
-        except Exception:
-
-            continue
-
-
-        if not is_surface(block):
-            continue
-
-
-        block_type = normalize_block(
-            block
-        )
-
-
-        if block_type == (
-            "minecraft:snow"
+        if check_surface_candidate(
+            x,
+            y,
+            z
         ):
 
-            try:
-
-                below = m.getblock(
-                    x,
-                    y - 1,
-                    z
-                )
-
-                if is_tree_or_leaf(
-                    below
-                ):
-
-                    continue
-
-            except Exception:
-
-                pass
+            return y
 
 
-        return y
+    # --------------------------------------------------------
+    # それでもダメなら上方向
+    # --------------------------------------------------------
+
+    for dy in range(
+        9,
+        FALLBACK_SEARCH_UP + 1
+    ):
+
+        y = last_y + dy
+
+        if check_surface_candidate(
+            x,
+            y,
+            z
+        ):
+
+            return y
 
 
     return None
@@ -776,15 +988,76 @@ def find_surface_deep(
     last_y
 ):
 
+    # --------------------------------------------------------
+    # 下方向
+    # --------------------------------------------------------
+
     for dy in range(
-        DEEP_SEARCH_UP,
+        12,
         -DEEP_SEARCH_DOWN - 1,
         -1
     ):
 
         y = last_y + dy
 
-        try:
+        if check_surface_candidate(
+            x,
+            y,
+            z
+        ):
+
+            return y
+
+
+    # --------------------------------------------------------
+    # 上方向
+    # --------------------------------------------------------
+
+    for dy in range(
+        13,
+        DEEP_SEARCH_UP + 1
+    ):
+
+        y = last_y + dy
+
+        if check_surface_candidate(
+            x,
+            y,
+            z
+        ):
+
+            return y
+
+
+    return None
+
+
+# ============================================================
+# DEBUG BLOCK
+# ============================================================
+
+def debug_ground(
+    x,
+    z,
+    last_y
+):
+
+    try:
+
+        m.echo(
+            "GROUND DEBUG "
+            f"x={x} "
+            f"z={z} "
+            f"last_y={last_y}"
+        )
+
+        for dy in range(
+            5,
+            -16,
+            -1
+        ):
+
+            y = last_y + dy
 
             block = m.getblock(
                 x,
@@ -792,51 +1065,20 @@ def find_surface_deep(
                 z
             )
 
-        except Exception:
+            m.echo(
+                f"  y={y} "
+                f"{normalize_block(block)}"
+            )
 
-            continue
+    except Exception as e:
 
-
-        if not is_surface(block):
-            continue
-
-
-        block_type = normalize_block(
-            block
+        m.echo(
+            f"GROUND DEBUG ERROR {e}"
         )
 
 
-        if block_type == (
-            "minecraft:snow"
-        ):
-
-            try:
-
-                below = m.getblock(
-                    x,
-                    y - 1,
-                    z
-                )
-
-                if is_tree_or_leaf(
-                    below
-                ):
-
-                    continue
-
-            except Exception:
-
-                pass
-
-
-        return y
-
-
-    return None
-
-
 # ============================================================
-# FIND SURFACE WITH RETRY
+# FIND SURFACE RETRY
 # ============================================================
 
 def find_surface_retry(
@@ -849,7 +1091,7 @@ def find_surface_retry(
 
     # ========================================================
     # PHASE 1
-    # 高速GETBLOCKLIST
+    # GETBLOCKLIST
     # ========================================================
 
     for attempt in range(
@@ -908,7 +1150,8 @@ def find_surface_retry(
         m.echo(
             f"GROUND FALLBACK OK "
             f"lane={lane_color} "
-            f"distance={distance}"
+            f"distance={distance} "
+            f"y={surface_y}"
         )
 
         return surface_y
@@ -949,6 +1192,21 @@ def find_surface_retry(
         )
 
         return surface_y
+
+
+    # ========================================================
+    # DEBUG
+    # ========================================================
+
+    m.echo(
+        "GROUND SEARCH FAILED"
+    )
+
+    debug_ground(
+        x,
+        z,
+        last_y
+    )
 
 
     return None
@@ -1097,7 +1355,6 @@ def fill_lane_range(
         sz
         + FZ * start_distance
     )
-
 
     x2 = (
         sx
@@ -1270,27 +1527,6 @@ def apply_lane_heights(
 
 def create_start_structure(state):
 
-    """
-    スタート地点の後ろに設備を作る。
-
-    進行方向:
-        Z+
-
-    スタート地点:
-        distance = 0
-
-    設備:
-        distance = -1
-
-    構成:
-
-        羊毛
-        コンクリート
-        ボタン
-    """
-
-    lanes = state["lanes"]
-
     m.echo(
         "================================"
     )
@@ -1304,7 +1540,7 @@ def create_start_structure(state):
     )
 
 
-    for lane in lanes:
+    for lane in state["lanes"]:
 
         sx, sy, sz = lane[
             "start"
@@ -1314,10 +1550,6 @@ def create_start_structure(state):
             "color"
         ]
 
-
-        # ====================================================
-        # distance = -1
-        # ====================================================
 
         x = (
             sx
@@ -1330,9 +1562,9 @@ def create_start_structure(state):
         )
 
 
-        ground_y = (
-            lane["start"][1]
-        )
+        ground_y = lane[
+            "start"
+        ][1]
 
 
         surface_y = (
@@ -1356,10 +1588,6 @@ def create_start_structure(state):
             continue
 
 
-        # ====================================================
-        # コンクリート
-        # ====================================================
-
         concrete = (
             f"minecraft:"
             f"{color}_concrete"
@@ -1379,10 +1607,6 @@ def create_start_structure(state):
             f"{concrete}"
         )
 
-
-        # ====================================================
-        # ボタン
-        # ====================================================
 
         button_x = x
 
@@ -1424,7 +1648,7 @@ def create_start_structure(state):
 
 
 # ============================================================
-# GET AREA BLOCK RANGE
+# AREA BLOCK RANGE
 # ============================================================
 
 def get_area_block_range(
@@ -1432,14 +1656,6 @@ def get_area_block_range(
     area_start,
     area_end
 ):
-
-    """
-    AREA内の5レーンを完全に包含する
-    X/Zブロック範囲を取得する。
-
-    AREA境界がチャンク途中でも、
-    後でチャンク単位に丸めるため問題なし。
-    """
 
     positions = []
 
@@ -1518,7 +1734,7 @@ def get_area_block_range(
 
 
 # ============================================================
-# BLOCK -> CHUNK
+# BLOCK TO CHUNK
 # ============================================================
 
 def block_to_chunk(
@@ -1531,7 +1747,7 @@ def block_to_chunk(
 
 
 # ============================================================
-# GET FORCELOAD CHUNK RANGE
+# FORCELOAD CHUNK RANGE
 # ============================================================
 
 def get_forceload_chunk_range(
@@ -1540,12 +1756,15 @@ def get_forceload_chunk_range(
     area_end
 ):
 
-    min_x, max_x, min_z, max_z = (
-        get_area_block_range(
-            lanes,
-            area_start,
-            area_end
-        )
+    (
+        min_x,
+        max_x,
+        min_z,
+        max_z
+    ) = get_area_block_range(
+        lanes,
+        area_start,
+        area_end
     )
 
 
@@ -1562,7 +1781,6 @@ def get_forceload_chunk_range(
         )
         + FORCELOAD_BUFFER_CHUNKS
     )
-
 
     min_chunk_z = (
         block_to_chunk(
@@ -1588,6 +1806,135 @@ def get_forceload_chunk_range(
 
 
 # ============================================================
+# FORCELOAD TEST
+# ============================================================
+
+def test_forceload_area(
+    lanes,
+    area_start,
+    area_end
+):
+
+    test_distances = [
+
+        area_start,
+
+        min(
+            area_start + 50,
+            area_end - 1
+        ),
+
+        min(
+            area_start + 100,
+            area_end - 1
+        ),
+
+        min(
+            area_start + 150,
+            area_end - 1
+        ),
+
+        area_end - 1
+
+    ]
+
+
+    test_distances = list(
+        dict.fromkeys(
+            test_distances
+        )
+    )
+
+
+    positions = []
+
+
+    for lane in lanes:
+
+        sx, sy, sz = lane[
+            "start"
+        ]
+
+        for distance in test_distances:
+
+            x = (
+                sx
+                + FX * distance
+            )
+
+            z = (
+                sz
+                + FZ * distance
+            )
+
+            positions.append([
+                x,
+                lane["last_y"],
+                z
+            ])
+
+
+    expected = len(
+        positions
+    )
+
+
+    for attempt in range(
+        FORCELOAD_RETRY_COUNT
+    ):
+
+        try:
+
+            blocks = m.getblocklist(
+                positions
+            )
+
+        except Exception as e:
+
+            m.echo(
+                f"FORCELOAD CHECK ERROR "
+                f"attempt={attempt + 1}/"
+                f"{FORCELOAD_RETRY_COUNT} "
+                f"error={e}"
+            )
+
+            blocks = None
+
+
+        if blocks is not None:
+
+            actual = len(
+                blocks
+            )
+
+            if actual == expected:
+
+                m.echo(
+                    f"FORCELOAD READY "
+                    f"({actual}/{expected}) "
+                    f"attempt={attempt + 1}"
+                )
+
+                return True
+
+
+        if attempt < (
+            FORCELOAD_RETRY_COUNT - 1
+        ):
+
+            time.sleep(
+                FORCELOAD_RETRY_WAIT
+            )
+
+
+    m.echo(
+        "FORCELOAD LOAD CHECK FAILED"
+    )
+
+    return False
+
+
+# ============================================================
 # FORCELOAD ADD
 # ============================================================
 
@@ -1608,12 +1955,6 @@ def forceload_area(
         area_end
     )
 
-
-    # ========================================================
-    # チャンク座標 → ブロック座標
-    #
-    # 各チャンクの左上角を使用
-    # ========================================================
 
     x1 = (
         min_chunk_x * 16
@@ -1664,15 +2005,14 @@ def forceload_area(
     )
 
     m.echo(
+        f"WAIT : "
+        f"{FORCELOAD_WAIT}s"
+    )
+
+    m.echo(
         "================================"
     )
 
-
-    # ========================================================
-    # forceload add
-    #
-    # 範囲指定
-    # ========================================================
 
     m.execute(
         f"forceload add "
@@ -1686,123 +2026,10 @@ def forceload_area(
     )
 
 
-    # ========================================================
-    # 簡易ロード確認
-    #
-    # 5レーンのAREA端付近を確認。
-    # ========================================================
-
-    for attempt in range(
-        FORCELOAD_RETRY_COUNT
-    ):
-
-        success_count = 0
-
-        test_distance_list = [
-
-            area_start,
-
-            min(
-                area_start + 50,
-                area_end - 1
-            ),
-
-            min(
-                area_start + 100,
-                area_end - 1
-            ),
-
-            min(
-                area_start + 150,
-                area_end - 1
-            ),
-
-            area_end - 1
-
-        ]
-
-
-        test_distance_list = list(
-            dict.fromkeys(
-                test_distance_list
-            )
-        )
-
-
-        for lane in lanes:
-
-            sx, sy, sz = lane[
-                "start"
-            ]
-
-
-            for distance in test_distance_list:
-
-                x = (
-                    sx
-                    + FX * distance
-                )
-
-                z = (
-                    sz
-                    + FZ * distance
-                )
-
-
-                try:
-
-                    block = m.getblock(
-                        x,
-                        lane["last_y"],
-                        z
-                    )
-
-
-                    if isinstance(
-                        block,
-                        str
-                    ):
-
-                        success_count += 1
-
-                except Exception:
-
-                    pass
-
-
-        expected = (
-            len(lanes)
-            * len(test_distance_list)
-        )
-
-
-        if success_count >= expected:
-
-            m.echo(
-                f"FORCELOAD READY "
-                f"({success_count}/"
-                f"{expected})"
-            )
-
-            return (
-                min_chunk_x,
-                max_chunk_x,
-                min_chunk_z,
-                max_chunk_z
-            )
-
-
-        if attempt < (
-            FORCELOAD_RETRY_COUNT - 1
-        ):
-
-            time.sleep(
-                FORCELOAD_RETRY_WAIT
-            )
-
-
-    m.echo(
-        "FORCELOAD LOAD CHECK FAILED"
+    test_forceload_area(
+        lanes,
+        area_start,
+        area_end
     )
 
 
@@ -1884,7 +2111,7 @@ def remove_forceload(
 
 
     time.sleep(
-        0.1
+        0.2
     )
 
 
@@ -1922,15 +2149,6 @@ def generate_area(
     )
 
     m.echo(
-        "BUFFER : "
-        f"{FORCELOAD_BUFFER_CHUNKS} CHUNK"
-    )
-
-    m.echo(
-        "FAST GETBLOCKLIST MODE"
-    )
-
-    m.echo(
         "================================"
     )
 
@@ -1942,20 +2160,12 @@ def generate_area(
 
     try:
 
-        # ====================================================
-        # FORCELOAD
-        # ====================================================
-
         force_range = forceload_area(
             lanes,
             area_start,
             area_end
         )
 
-
-        # ====================================================
-        # 50 BLOCK SLICES
-        # ====================================================
 
         current = area_start
 
@@ -1979,10 +2189,6 @@ def generate_area(
                 f"{area_end}"
             )
 
-
-            # =================================================
-            # HEIGHT SCAN
-            # =================================================
 
             height_data = []
 
@@ -2034,10 +2240,6 @@ def generate_area(
                 )
 
 
-            # =================================================
-            # BUILD
-            # =================================================
-
             for index, lane in enumerate(
                 lanes
             ):
@@ -2057,17 +2259,12 @@ def generate_area(
                     return False
 
 
-            # =================================================
-            # SAVE
-            # =================================================
-
             current = slice_end
 
 
             state[
                 "current_length"
             ] = current
-
 
             state[
                 "lanes"
@@ -2093,10 +2290,6 @@ def generate_area(
                 f"| {elapsed}s"
             )
 
-
-        # ====================================================
-        # AREA COMPLETE
-        # ====================================================
 
         area_elapsed = round(
             time.time()
@@ -2129,10 +2322,6 @@ def generate_area(
 
     finally:
 
-        # ====================================================
-        # 必ずforceload解除
-        # ====================================================
-
         if force_range is not None:
 
             remove_forceload(
@@ -2163,20 +2352,12 @@ def generate_course():
     ]
 
 
-    # ========================================================
-    # 最初にスタート設備
-    # ========================================================
-
     if current == 0:
 
         create_start_structure(
             state
         )
 
-
-    # ========================================================
-    # TIME LOG
-    # ========================================================
 
     if os.path.exists(
         TIME_FILE
@@ -2201,10 +2382,6 @@ def generate_course():
         time_log = {}
 
 
-    # ========================================================
-    # HEADER
-    # ========================================================
-
     m.echo(
         "================================"
     )
@@ -2214,7 +2391,7 @@ def generate_course():
     )
 
     m.echo(
-        "VERSION : v0.9.00"
+        "VERSION : v0.9.02"
     )
 
     m.echo(
@@ -2238,24 +2415,7 @@ def generate_course():
     )
 
     m.echo(
-        f"Buffer  : "
-        f"{FORCELOAD_BUFFER_CHUNKS} chunk"
-    )
-
-    m.echo(
-        "Chunk   : ROLLING"
-    )
-
-    m.echo(
-        "Ground  : GETBLOCKLIST"
-    )
-
-    m.echo(
-        "Fallback: GETBLOCK"
-    )
-
-    m.echo(
-        "Start   : CONCRETE + BUTTON"
+        "Ground  : GETBLOCKLIST + FALLBACK"
     )
 
     m.echo(
@@ -2267,10 +2427,6 @@ def generate_course():
 
 
     try:
-
-        # ====================================================
-        # AREA LOOP
-        # ====================================================
 
         while current < TOTAL_LENGTH:
 
@@ -2289,21 +2445,15 @@ def generate_course():
             )
 
 
-            # =================================================
-            # FAILED
-            # =================================================
-
             if not success:
 
                 state[
                     "current_length"
                 ] = area_start
 
-
                 state[
                     "lanes"
                 ] = lanes
-
 
                 save_state(
                     state
@@ -2334,17 +2484,12 @@ def generate_course():
                 return
 
 
-            # =================================================
-            # AREA COMPLETE
-            # =================================================
-
             current = area_end
 
 
             state[
                 "current_length"
             ] = current
-
 
             state[
                 "lanes"
@@ -2391,10 +2536,6 @@ def generate_course():
             )
 
 
-        # ====================================================
-        # COMPLETE
-        # ====================================================
-
         total_elapsed = round(
             time.time()
             - total_start,
@@ -2423,10 +2564,6 @@ def generate_course():
         )
 
         m.echo(
-            "Mode   : FORCELOAD"
-        )
-
-        m.echo(
             "================================"
         )
 
@@ -2442,12 +2579,6 @@ def generate_course():
 
     finally:
 
-        # ====================================================
-        # 念のためFORCELOAD残存を除去
-        #
-        # 通常はgenerate_area()のfinallyで解除済み。
-        # ====================================================
-
         restore_player()
 
 
@@ -2456,15 +2587,6 @@ def generate_course():
 # ============================================================
 
 def setup_only():
-
-    """
-    set0
-
-    現在位置をスタート地点として登録し、
-    スタート設備だけを作る。
-
-    レーン本体は生成しない。
-    """
 
     save_player_state()
 
@@ -2489,18 +2611,10 @@ def setup_only():
     )
 
 
-    # ========================================================
-    # スタート設備作成
-    # ========================================================
-
     create_start_structure(
         state
     )
 
-
-    # ========================================================
-    # プレイヤーを元位置へ
-    # ========================================================
 
     restore_player()
 
