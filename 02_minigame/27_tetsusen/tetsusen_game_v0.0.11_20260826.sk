@@ -1,0 +1,1070 @@
+# ============================================================
+# TETSUSEN GAME SYSTEM
+# Version : v0.5.01
+# Date    : 2026-08-26
+#
+# 鉄千ゲームシステム
+#
+# Features
+#   ・GUIによるゲーム管理
+#   ・焼き場選択
+#   ・プレイヤーヘッド表示
+#   ・巨大プレイヤーヘッド表示
+#   ・必要個数を選択してゲーム開始
+#   ・3 / 2 / 1 / START カウントダウン
+#   ・ゲーム時間計測
+#   ・各プレイヤーごとの鉄インゴット数計測
+#   ・各プレイヤーのアクションバーに進捗表示
+#   ・CLEAR後もアクションバー表示
+#   ・CLEAR後は鉄インゴット数を固定
+#   ・必要個数到達時の個別CLEAR
+#   ・CLEAR時にシード値表示
+#   ・30分ごとの経過時間表示
+#   ・STOP時の全員結果表示
+#   ・STOP時にシード値表示
+#   ・RESETによる完全初期化
+#
+# 管理
+#   /tetsusen
+#
+# ============================================================
+
+
+# ============================================================
+# LOAD
+# ============================================================
+
+on load:
+
+    set {tetsusen.running} to false
+    set {tetsusen.setup} to false
+    set {tetsusen.countdown} to false
+
+
+# ============================================================
+# OPEN TETSUSEN GUI
+# ============================================================
+
+command /tetsusen:
+
+    permission: op
+
+    trigger:
+
+        set {_gui} to chest inventory with 1 row named "&6TETSUSEN ADMIN"
+
+
+        # ====================================================
+        # SET
+        # ====================================================
+
+        set slot 1 of {_gui} to emerald named "&a&lSET"
+        set lore of slot 1 of {_gui} to "&7Reset previous state and select stations"
+
+
+        # ====================================================
+        # START
+        # ====================================================
+
+        set slot 3 of {_gui} to diamond named "&e&lSTART"
+        set lore of slot 3 of {_gui} to "&7Choose required iron count and start"
+
+
+        # ====================================================
+        # STOP
+        # ====================================================
+
+        set slot 5 of {_gui} to redstone named "&c&lSTOP"
+        set lore of slot 5 of {_gui} to "&7Stop the game and show results"
+
+
+        # ====================================================
+        # RESET
+        # ====================================================
+
+        set slot 7 of {_gui} to barrier named "&c&lRESET"
+        set lore of slot 7 of {_gui} to "&7Reset stations and game state"
+
+
+        open {_gui} to player
+
+
+# ============================================================
+# MAIN ADMIN GUI
+# ============================================================
+
+on inventory click:
+
+    if name of event-inventory is "&6TETSUSEN ADMIN":
+
+        cancel event
+
+
+        # ====================================================
+        # SET
+        # ====================================================
+
+        if clicked slot is 1:
+
+            close player's inventory
+
+
+            # ------------------------------------------------
+            # Cannot SET during game
+            # ------------------------------------------------
+
+            if {tetsusen.running} is true:
+
+                send "&cSET is not available during the game." to player
+
+                stop
+
+
+            if {tetsusen.countdown} is true:
+
+                send "&cSET is not available during countdown." to player
+
+                stop
+
+
+            # =================================================
+            # AUTO RESET
+            # =================================================
+
+            loop all players:
+
+                if {tetsusen.shulker::%loop-player%} is set:
+
+                    set {_shulker} to {tetsusen.shulker::%loop-player%}
+
+
+                    # ----------------------------------------
+                    # REMOVE NORMAL HEAD
+                    # ----------------------------------------
+
+                    set {_headLocation} to location of {_shulker}
+
+                    add 1 to y-coordinate of {_headLocation}
+
+                    set block at {_headLocation} to air
+
+
+                    # ----------------------------------------
+                    # RESTORE BUTTON
+                    # ----------------------------------------
+
+                    set {_buttonLocation} to location of {_shulker}
+
+                    remove 1 from z-coordinate of {_buttonLocation}
+
+                    set block at {_buttonLocation} to stone button
+
+
+            # -----------------------------------------------
+            # REMOVE BIG HEADS
+            # -----------------------------------------------
+
+            execute console command "kill @e[tag=tetsusen_big_head]"
+
+
+            # -----------------------------------------------
+            # SCOREBOARD RESET
+            # -----------------------------------------------
+
+            execute console command "scoreboard players reset * iron_count"
+
+            execute console command "scoreboard objectives setdisplay sidebar"
+
+
+            # -----------------------------------------------
+            # VARIABLES RESET
+            # -----------------------------------------------
+
+            delete {tetsusen.station::*}
+            delete {tetsusen.station.player::*}
+            delete {tetsusen.shulker::*}
+
+            delete {tetsusen.button::*}
+            delete {tetsusen.head::*}
+            delete {tetsusen.bighead.location::*}
+
+            delete {tetsusen.required}
+            delete {tetsusen.time}
+            delete {tetsusen.seed}
+            delete {tetsusen.nextannouncement}
+
+            delete {tetsusen.clear::*}
+            delete {tetsusen.cleartime::*}
+            delete {tetsusen.finaliron::*}
+
+
+            set {tetsusen.countdown} to false
+
+
+            # =================================================
+            # SET START
+            # =================================================
+
+            set {tetsusen.setup} to true
+
+
+            # ------------------------------------------------
+            # MESSAGE
+            # ------------------------------------------------
+
+            send "" to all players
+            send "&a&l==============================" to all players
+            send "&a&l        TETSUSEN SET" to all players
+            send "&fPlease select your station." to all players
+            send "&a&l==============================" to all players
+            send "" to all players
+
+            stop
+
+
+        # ====================================================
+        # START
+        # ====================================================
+
+        if clicked slot is 3:
+
+            close player's inventory
+
+
+            if {tetsusen.setup} is not true:
+
+                send "&cPlease complete SET first." to player
+
+                stop
+
+
+            if {tetsusen.running} is true:
+
+                send "&cThe game is already running." to player
+
+                stop
+
+
+            if {tetsusen.countdown} is true:
+
+                send "&cThe countdown is already running." to player
+
+                stop
+
+
+            # ------------------------------------------------
+            # REQUIRED COUNT GUI
+            # ------------------------------------------------
+
+            set {_gui} to chest inventory with 1 row named "&6SELECT REQUIRED IRON"
+
+
+            set slot 1 of {_gui} to iron ingot named "&f&l10 IRON"
+            set lore of slot 1 of {_gui} to "&710 iron to CLEAR"
+
+
+            set slot 2 of {_gui} to iron ingot named "&f&l100 IRON"
+            set lore of slot 2 of {_gui} to "&7100 iron to CLEAR"
+
+
+            set slot 3 of {_gui} to iron ingot named "&f&l200 IRON"
+            set lore of slot 3 of {_gui} to "&7200 iron to CLEAR"
+
+
+            set slot 4 of {_gui} to iron ingot named "&f&l300 IRON"
+            set lore of slot 4 of {_gui} to "&7300 iron to CLEAR"
+
+
+            set slot 5 of {_gui} to iron ingot named "&f&l500 IRON"
+            set lore of slot 5 of {_gui} to "&7500 iron to CLEAR"
+
+
+            set slot 6 of {_gui} to iron ingot named "&f&l1000 IRON"
+            set lore of slot 6 of {_gui} to "&71000 iron to CLEAR"
+
+
+            open {_gui} to player
+
+            stop
+
+
+        # ====================================================
+        # STOP
+        # ====================================================
+
+        if clicked slot is 5:
+
+            close player's inventory
+
+
+            # ------------------------------------------------
+            # STOP DURING COUNTDOWN
+            # ------------------------------------------------
+
+            if {tetsusen.countdown} is true:
+
+                set {tetsusen.countdown} to false
+
+                send "&cCountdown cancelled." to all players
+
+                stop
+
+
+            # ------------------------------------------------
+            # GAME NOT RUNNING
+            # ------------------------------------------------
+
+            if {tetsusen.running} is false:
+
+                send "&cThe game is not running." to player
+
+                stop
+
+
+            # ------------------------------------------------
+            # STOP GAME
+            # ------------------------------------------------
+
+            set {tetsusen.running} to false
+
+
+            # ------------------------------------------------
+            # SIDEBAR OFF
+            # ------------------------------------------------
+
+            execute console command "scoreboard objectives setdisplay sidebar"
+
+
+            # =================================================
+            # FINAL RESULT
+            # =================================================
+
+            send "" to all players
+            send "&c&l========================================" to all players
+            send "&e&l              TETSUSEN RESULT" to all players
+            send "&c&l========================================" to all players
+
+            send "&7SEED: &f%{tetsusen.seed}%" to all players
+
+            send "" to all players
+
+
+            # =================================================
+            # PLAYER RESULT
+            # =================================================
+
+            loop all players:
+
+                if {tetsusen.shulker::%loop-player%} is set:
+
+
+                    # ----------------------------------------
+                    # FINAL IRON COUNT
+                    #
+                    # CLEAR済みなら保存値を使用
+                    # 未CLEARなら現在値を取得
+                    # ----------------------------------------
+
+                    if {tetsusen.clear::%loop-player%} is true:
+
+                        set {_iron} to {tetsusen.finaliron::%loop-player%}
+
+                    else:
+
+                        set {_shulker} to {tetsusen.shulker::%loop-player%}
+
+                        set {_iron} to 0
+
+                        loop items in inventory of {_shulker}:
+
+                            if loop-item is iron ingot:
+
+                                add amount of loop-item to {_iron}
+
+
+                        set {tetsusen.finaliron::%loop-player%} to {_iron}
+
+
+                    # ----------------------------------------
+                    # CLEAR RESULT
+                    # ----------------------------------------
+
+                    if {tetsusen.clear::%loop-player%} is true:
+
+                        set {_clearSeconds} to {tetsusen.cleartime::%loop-player%}
+
+
+                        # ------------------------------------
+                        # TIME
+                        # ------------------------------------
+
+                        set {_hours} to floor({_clearSeconds} / 3600)
+
+                        set {_minutes} to floor(({_clearSeconds} - ({_hours} * 3600)) / 60)
+
+                        set {_seconds} to {_clearSeconds} - ({_hours} * 3600) - ({_minutes} * 60)
+
+
+                        if {_minutes} < 10:
+
+                            set {_minText} to "0%{_minutes}%"
+
+                        else:
+
+                            set {_minText} to "%{_minutes}%"
+
+
+                        if {_seconds} < 10:
+
+                            set {_secText} to "0%{_seconds}%"
+
+                        else:
+
+                            set {_secText} to "%{_seconds}%"
+
+
+                        set {_timeText} to "%{_hours}%:%{_minText}%:%{_secText}%"
+
+
+                        # ------------------------------------
+                        # RESULT
+                        # ------------------------------------
+
+                        send "&a%loop-player% &f%{_iron}% IRON &eCLEAR &7%{_timeText}%" to all players
+
+
+                    else:
+
+                        send "&7%loop-player% &f%{_iron}% IRON &cNOT CLEARED" to all players
+
+
+            send "" to all players
+            send "&c&l========================================" to all players
+            send "" to all players
+
+            stop
+
+
+        # ====================================================
+        # RESET
+        # ====================================================
+
+        if clicked slot is 7:
+
+            close player's inventory
+
+
+            set {tetsusen.running} to false
+            set {tetsusen.setup} to false
+            set {tetsusen.countdown} to false
+
+
+            # ------------------------------------------------
+            # RESTORE STATIONS
+            # ------------------------------------------------
+
+            loop all players:
+
+                if {tetsusen.shulker::%loop-player%} is set:
+
+                    set {_shulker} to {tetsusen.shulker::%loop-player%}
+
+
+                    # ----------------------------------------
+                    # REMOVE NORMAL HEAD
+                    # ----------------------------------------
+
+                    set {_headLocation} to location of {_shulker}
+
+                    add 1 to y-coordinate of {_headLocation}
+
+                    set block at {_headLocation} to air
+
+
+                    # ----------------------------------------
+                    # RESTORE BUTTON
+                    # ----------------------------------------
+
+                    set {_buttonLocation} to location of {_shulker}
+
+                    remove 1 from z-coordinate of {_buttonLocation}
+
+                    set block at {_buttonLocation} to stone button
+
+
+            # ------------------------------------------------
+            # REMOVE BIG HEADS
+            # ------------------------------------------------
+
+            execute console command "kill @e[tag=tetsusen_big_head]"
+
+
+            # ------------------------------------------------
+            # SCOREBOARD RESET
+            # ------------------------------------------------
+
+            execute console command "scoreboard players reset * iron_count"
+
+            execute console command "scoreboard objectives setdisplay sidebar"
+
+
+            # ------------------------------------------------
+            # VARIABLES CLEAR
+            # ------------------------------------------------
+
+            delete {tetsusen.station::*}
+            delete {tetsusen.station.player::*}
+            delete {tetsusen.shulker::*}
+
+            delete {tetsusen.button::*}
+            delete {tetsusen.head::*}
+            delete {tetsusen.bighead.location::*}
+
+            delete {tetsusen.required}
+            delete {tetsusen.time}
+            delete {tetsusen.seed}
+            delete {tetsusen.nextannouncement}
+
+            delete {tetsusen.clear::*}
+            delete {tetsusen.cleartime::*}
+            delete {tetsusen.finaliron::*}
+
+
+            # ------------------------------------------------
+            # MESSAGE
+            # ------------------------------------------------
+
+            send "" to all players
+            send "&e&l==============================" to all players
+            send "&e&l          TETSUSEN RESET" to all players
+            send "&fStations, heads and buttons have been reset." to all players
+            send "&e&l==============================" to all players
+            send "" to all players
+
+            stop
+
+
+# ============================================================
+# REQUIRED COUNT GUI
+# ============================================================
+
+on inventory click:
+
+    if name of event-inventory is "&6SELECT REQUIRED IRON":
+
+        cancel event
+
+
+        # ====================================================
+        # REQUIRED COUNT
+        # ====================================================
+
+        if clicked slot is 1:
+
+            set {_required} to 10
+
+        else if clicked slot is 2:
+
+            set {_required} to 100
+
+        else if clicked slot is 3:
+
+            set {_required} to 200
+
+        else if clicked slot is 4:
+
+            set {_required} to 300
+
+        else if clicked slot is 5:
+
+            set {_required} to 500
+
+        else if clicked slot is 6:
+
+            set {_required} to 1000
+
+        else:
+
+            stop
+
+
+        close player's inventory
+
+
+        # ====================================================
+        # INITIALIZE PLAYER DATA
+        # ====================================================
+
+        loop all players:
+
+            if {tetsusen.shulker::%loop-player%} is set:
+
+                delete {tetsusen.clear::%loop-player%}
+                delete {tetsusen.cleartime::%loop-player%}
+                delete {tetsusen.finaliron::%loop-player%}
+
+                execute console command "scoreboard players set %loop-player% iron_count 0"
+
+
+        # ====================================================
+        # GAME SETTINGS
+        # ====================================================
+
+        set {tetsusen.required} to {_required}
+
+        set {tetsusen.countdown} to true
+
+        set {tetsusen.running} to false
+
+        set {tetsusen.time} to 0
+
+        # ----------------------------------------------------
+        # 30分通知の次回時刻
+        # ----------------------------------------------------
+
+        set {tetsusen.nextannouncement} to 1800
+
+
+        # ====================================================
+        # SEED
+        # ====================================================
+
+        set {_world} to world of player
+
+        set {tetsusen.seed} to seed of {_world}
+
+
+        # ====================================================
+        # 3
+        # ====================================================
+
+        send title "&c&l3" with subtitle "&fGET READY" to all players
+
+        play sound "block.note_block.pling" with volume 1 and pitch 1.1 to all players
+
+        wait 1 second
+
+
+        if {tetsusen.countdown} is not true:
+
+            stop
+
+
+        # ====================================================
+        # 2
+        # ====================================================
+
+        send title "&e&l2" with subtitle "&fGET READY" to all players
+
+        play sound "block.note_block.pling" with volume 1 and pitch 1.1 to all players
+
+        wait 1 second
+
+
+        if {tetsusen.countdown} is not true:
+
+            stop
+
+
+        # ====================================================
+        # 1
+        # ====================================================
+
+        send title "&a&l1" with subtitle "&fGET READY" to all players
+
+        play sound "block.note_block.pling" with volume 1 and pitch 1.1 to all players
+
+        wait 1 second
+
+
+        if {tetsusen.countdown} is not true:
+
+            stop
+
+
+        # ====================================================
+        # START
+        # ====================================================
+
+        set {tetsusen.countdown} to false
+
+        set {tetsusen.running} to true
+
+        set {tetsusen.time} to 0
+
+
+        # ====================================================
+        # SCOREBOARD
+        # ====================================================
+
+        execute console command "scoreboard objectives add iron_count dummy"
+
+        execute console command "scoreboard objectives setdisplay sidebar iron_count"
+
+
+        # ====================================================
+        # START TITLE
+        # ====================================================
+
+        send title "&6&lSTART!!" with subtitle "&eIRON %{tetsusen.required}%!" to all players
+
+        play sound "entity.player.levelup" with volume 1 and pitch 1.2 to all players
+
+
+        # ====================================================
+        # CHAT
+        # ====================================================
+
+        send "" to all players
+        send "&6&l==============================" to all players
+        send "&e&l          TETSUSEN START!" to all players
+        send "&fRequired: &e%{tetsusen.required}% IRON" to all players
+        send "&7SEED: &f%{tetsusen.seed}%" to all players
+        send "&6&l==============================" to all players
+        send "" to all players
+
+
+# ============================================================
+# STATION SELECT
+# ============================================================
+
+on right click on stone button:
+
+    cancel event
+
+
+    # --------------------------------------------------------
+    # SET MODE CHECK
+    # --------------------------------------------------------
+
+    if {tetsusen.setup} is not true:
+
+        stop
+
+
+    # --------------------------------------------------------
+    # GAME / COUNTDOWN CHECK
+    # --------------------------------------------------------
+
+    if {tetsusen.running} is true:
+
+        send "&cYou cannot change your station during the game." to player
+
+        stop
+
+
+    if {tetsusen.countdown} is true:
+
+        send "&cYou cannot change your station during countdown." to player
+
+        stop
+
+
+    # --------------------------------------------------------
+    # SHULKER
+    # --------------------------------------------------------
+
+    set {_shulker} to block south of event-block
+
+
+    # --------------------------------------------------------
+    # COLOR
+    # --------------------------------------------------------
+
+    if {_shulker} is red shulker box:
+
+        set {_color} to "red"
+
+    else if {_shulker} is blue shulker box:
+
+        set {_color} to "blue"
+
+    else if {_shulker} is green shulker box:
+
+        set {_color} to "green"
+
+    else if {_shulker} is yellow shulker box:
+
+        set {_color} to "yellow"
+
+    else if {_shulker} is purple shulker box:
+
+        set {_color} to "purple"
+
+    else:
+
+        stop
+
+
+    # --------------------------------------------------------
+    # PLAYER ALREADY SELECTED
+    # --------------------------------------------------------
+
+    if {tetsusen.station::%player%} is set:
+
+        send "&cYou have already selected a station." to player
+
+        stop
+
+
+    # --------------------------------------------------------
+    # STATION ALREADY USED
+    # --------------------------------------------------------
+
+    if {tetsusen.station.player::%{_color}%} is set:
+
+        send "&cThis station has already been selected." to player
+
+        stop
+
+
+    # ========================================================
+    # SAVE
+    # ========================================================
+
+    set {tetsusen.station::%player%} to {_color}
+
+    set {tetsusen.station.player::%{_color}%} to player
+
+    set {tetsusen.shulker::%player%} to {_shulker}
+
+
+    # ========================================================
+    # NORMAL PLAYER HEAD
+    # ========================================================
+
+    set {_headLocation} to location of {_shulker}
+
+    add 1 to y-coordinate of {_headLocation}
+
+    set {tetsusen.head::%player%} to {_headLocation}
+
+
+    # ========================================================
+    # BIG PLAYER HEAD
+    # ========================================================
+
+    set {_bigLocation} to location of {_shulker}
+
+    add 10 to y-coordinate of {_bigLocation}
+
+    add 2 to z-coordinate of {_bigLocation}
+
+    set {tetsusen.bighead.location::%player%} to {_bigLocation}
+
+
+    # ========================================================
+    # DELETE BUTTON
+    # ========================================================
+
+    set event-block to air
+
+
+    # ========================================================
+    # NORMAL PLAYER HEAD
+    # ========================================================
+
+    set block at {_headLocation} to player head
+
+    set skull owner of block at {_headLocation} to player
+
+
+    # ========================================================
+    # BIG PLAYER HEAD
+    # ========================================================
+
+    set {_bigX} to x-coordinate of {_bigLocation}
+    set {_bigY} to y-coordinate of {_bigLocation}
+    set {_bigZ} to z-coordinate of {_bigLocation}
+
+
+    execute console command "summon minecraft:item_display %{_bigX}% %{_bigY}% %{_bigZ}% {item:{id:""minecraft:player_head"",count:1,components:{""minecraft:profile"":{name:""%player%""}}},billboard:""fixed"",Tags:[""tetsusen_big_head""]}"
+
+
+    # ========================================================
+    # BIG HEAD SCALE
+    # ========================================================
+
+    execute console command "data modify entity @e[tag=tetsusen_big_head,x=%{_bigX}%,y=%{_bigY}%,z=%{_bigZ}%,distance=..1,limit=1] transformation.scale set value [6f,6f,1f]"
+
+
+    # ========================================================
+    # MESSAGE
+    # ========================================================
+
+    send "&a%player% selected the &f%{_color}% &astation." to all players
+
+
+# ============================================================
+# GAME TIMER + IRON COUNT + ACTION BAR + CLEAR
+# ============================================================
+
+every 1 second:
+
+    if {tetsusen.running} is true:
+
+
+        # ====================================================
+        # TIMER
+        # ====================================================
+
+        add 1 to {tetsusen.time}
+
+
+        # ====================================================
+        # PLAYER LOOP
+        # ====================================================
+
+        loop all players:
+
+            if {tetsusen.shulker::%loop-player%} is set:
+
+
+                # =================================================
+                # CLEAR済み
+                #
+                # 数字はCLEAR時点で固定
+                # =================================================
+
+                if {tetsusen.clear::%loop-player%} is true:
+
+                    set {_iron} to {tetsusen.finaliron::%loop-player%}
+
+
+                    # ---------------------------------------------
+                    # ACTION BAR
+                    # ---------------------------------------------
+
+                    send action bar "&fIRON: &e%{_iron}% &7/ &e%{tetsusen.required}%" to loop-player
+
+
+                else:
+
+
+                    # =================================================
+                    # IRON COUNT
+                    # =================================================
+
+                    set {_shulker} to {tetsusen.shulker::%loop-player%}
+
+                    set {_iron} to 0
+
+
+                    loop items in inventory of {_shulker}:
+
+                        if loop-item is iron ingot:
+
+                            add amount of loop-item to {_iron}
+
+
+                    # =================================================
+                    # ACTION BAR
+                    # =================================================
+
+                    send action bar "&fIRON: &e%{_iron}% &7/ &e%{tetsusen.required}%" to loop-player
+
+
+                    # =================================================
+                    # SCOREBOARD
+                    # =================================================
+
+                    execute console command "scoreboard players set %loop-player% iron_count %{_iron}%"
+
+
+                    # =================================================
+                    # CLEAR CHECK
+                    # =================================================
+
+                    if {_iron} >= {tetsusen.required}:
+
+                        set {tetsusen.clear::%loop-player%} to true
+
+                        set {tetsusen.finaliron::%loop-player%} to {_iron}
+
+                        set {_clearSeconds} to {tetsusen.time}
+
+                        set {tetsusen.cleartime::%loop-player%} to {_clearSeconds}
+
+
+                        # ========================================
+                        # TIME CALCULATION
+                        # ========================================
+
+                        set {_hours} to floor({_clearSeconds} / 3600)
+
+                        set {_minutes} to floor(({_clearSeconds} - ({_hours} * 3600)) / 60)
+
+                        set {_seconds} to {_clearSeconds} - ({_hours} * 3600) - ({_minutes} * 60)
+
+
+                        if {_minutes} < 10:
+
+                            set {_minText} to "0%{_minutes}%"
+
+                        else:
+
+                            set {_minText} to "%{_minutes}%"
+
+
+                        if {_seconds} < 10:
+
+                            set {_secText} to "0%{_seconds}%"
+
+                        else:
+
+                            set {_secText} to "%{_seconds}%"
+
+
+                        set {_timeText} to "%{_hours}%:%{_minText}%:%{_secText}%"
+
+
+                        # ========================================
+                        # CLEAR TITLE
+                        # ========================================
+
+                        send title "&6&lCLEAR!!" with subtitle "&f%loop-player% &7%{_timeText}%" to all players
+
+
+                        # ========================================
+                        # SOUND
+                        # ========================================
+
+                        play sound "ui.toast.challenge_complete" with volume 1 and pitch 1 to all players
+
+                        play sound "entity.player.levelup" with volume 1 and pitch 1 to loop-player
+
+
+                        # ========================================
+                        # CHAT
+                        # ========================================
+
+                        send "" to all players
+                        send "&6&l====================================" to all players
+                        send "&e&l              CLEAR!!" to all players
+                        send "&f%loop-player% &7→ &e%{_timeText}%" to all players
+                        send "&fIRON: &e%{_iron}%" to all players
+                        send "&7SEED: &f%{tetsusen.seed}%" to all players
+                        send "&6&l====================================" to all players
+                        send "" to all players
+
+
+        # ========================================================
+        # 30 MINUTE ANNOUNCEMENT
+        #
+        # mod / remainder は使用しない
+        # 次回通知時刻を変数で管理
+        # ========================================================
+
+        if {tetsusen.time} is {tetsusen.nextannouncement}:
+
+            set {_elapsedMinutes} to floor({tetsusen.time} / 60)
+
+
+            send title "&6&l%{_elapsedMinutes}% MINUTES" with subtitle "&f%{_elapsedMinutes}% minutes have passed." to all players
+
+
+            # ------------------------------------------------
+            # 次回30分後
+            # ------------------------------------------------
+
+            add 1800 to {tetsusen.nextannouncement}
