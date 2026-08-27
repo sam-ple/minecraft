@@ -1,6 +1,6 @@
 # ============================================================
 # RESPAWN DEBUG TEST
-# Version : v0.2.00
+# Version : v0.2.01
 #
 # Command
 #   /rtdebug
@@ -52,6 +52,8 @@ command /rtdebug:
         set {_by} to floor(y-coordinate of player)
         set {_bz} to floor(z-coordinate of player)
 
+        set {_goldY} to {_by} - 1
+
         set {_world} to world of player
 
 
@@ -59,7 +61,7 @@ command /rtdebug:
         # 金ブロック
         # ----------------------------------------------------
 
-        set block at location({_bx}, {_by} - 1, {_bz}, {_world}) to gold block
+        set block at location({_bx}, {_goldY}, {_bz}, {_world}) to gold block
 
 
         # ----------------------------------------------------
@@ -109,7 +111,7 @@ command /rtdebug:
 
         send "" to player
         send "&6&l========== Respawn Debug ==========" to player
-        send "&e金ブロック: &f%{_bx}%, %{_by} - 1, %{_bz}%" to player
+        send "&e金ブロック: &f%{_bx}%, %{_goldY}%, %{_bz}%" to player
         send "&eTarget: &f%{_rx}%, %{_ry}%, %{_rz}%" to player
         send "&eWorld: &f%{_world}%" to player
         send "" to player
@@ -123,7 +125,7 @@ command /rtdebug:
         # LOG
         # ----------------------------------------------------
 
-        send "[RespawnDebug] SET | player=%player% | gold=%{_bx}%,%{_by} - 1,%{_bz}% | target=%{_rx}%,%{_ry}%,%{_rz}% | world=%{_world}%" to console
+        send "[RespawnDebug] SET | player=%player% | gold=%{_bx}%,%{_goldY}%,%{_bz}% | target=%{_rx}%,%{_ry}%,%{_rz}% | world=%{_world}%" to console
 
 
 # ============================================================
@@ -138,6 +140,11 @@ on death of player:
 
 
     set {_p} to victim
+
+
+    # --------------------------------------------------------
+    # 死亡時座標
+    # --------------------------------------------------------
 
     set {rtdebug.death.x::%{_p}%} to x-coordinate of {_p}
     set {rtdebug.death.y::%{_p}%} to y-coordinate of {_p}
@@ -192,6 +199,10 @@ on respawn:
 
     wait 2 ticks
 
+
+    # --------------------------------------------------------
+    # 実際の座標
+    # --------------------------------------------------------
 
     set {_ax} to x-coordinate of player
     set {_ay} to y-coordinate of player
