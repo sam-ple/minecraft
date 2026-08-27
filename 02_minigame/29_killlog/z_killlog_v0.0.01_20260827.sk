@@ -1,0 +1,230 @@
+# ============================================================
+# DEATH RACE
+# Version : v0.1.00
+#
+# DEATH LOG COLLECTION - MINIMUM TEST
+#
+# Purpose
+#   ・死亡イベントを取得できるか確認
+#   ・死亡メッセージをログ出力
+#   ・攻撃者がいる死亡を KILL として仮分類
+#   ・同じプレイヤーの同じカテゴリを重複カウントしない
+#   ・別プレイヤーなら同じカテゴリでもポイント
+#
+# Commands
+#   /deathrace start
+#   /deathrace stop
+#   /deathrace reset
+#   /deathrace status
+#   /deathrace debug
+#
+# ============================================================
+
+
+options:
+    prefix: &8[&cDeathRace&8]&r
+
+
+# ============================================================
+# START
+# ============================================================
+
+command /deathrace start:
+    permission: op
+    trigger:
+
+        set {deathrace.running} to true
+
+        send "{@prefix} &aDeath Race START!" to all players
+
+        if {deathrace.debug} is true:
+            send "{@prefix} &7[DEBUG] Game state = RUNNING" to player
+
+
+# ============================================================
+# STOP
+# ============================================================
+
+command /deathrace stop:
+    permission: op
+    trigger:
+
+        set {deathrace.running} to false
+
+        send "{@prefix} &cDeath Race STOP!" to all players
+
+        if {deathrace.debug} is true:
+            send "{@prefix} &7[DEBUG] Game state = STOPPED" to player
+
+
+# ============================================================
+# RESET
+# ============================================================
+
+command /deathrace reset:
+    permission: op
+    trigger:
+
+        delete {deathrace.points::*}
+        delete {deathrace.collected::*}
+
+        set {deathrace.running} to false
+
+        send "{@prefix} &eDeath Race data RESET." to player
+
+
+# ============================================================
+# STATUS
+# ============================================================
+
+command /deathrace status:
+    permission: op
+    trigger:
+
+        send "&8&m--------------------------------"
+        send "&cDeath Race &7STATUS"
+        send "&8&m--------------------------------"
+
+        if {deathrace.running} is true:
+            send "&7State: &aRUNNING"
+        else:
+            send "&7State: &cSTOPPED"
+
+        send ""
+
+        loop all players:
+
+            set {_uuid} to uuid of loop-player
+
+            set {_points} to {deathrace.points::%{_uuid}%}
+
+            if {_points} is not set:
+                set {_points} to 0
+
+            send "&f%loop-player% &7: &e%{_points}% point(s)"
+
+        send "&8&m--------------------------------"
+
+
+# ============================================================
+# DEBUG TOGGLE
+# ============================================================
+
+command /deathrace debug:
+    permission: op
+    trigger:
+
+        if {deathrace.debug} is true:
+
+            set {deathrace.debug} to false
+
+            send "{@prefix} &7Debug mode: &cOFF"
+
+        else:
+
+            set {deathrace.debug} to true
+
+            send "{@prefix} &7Debug mode: &aON"
+
+
+# ============================================================
+# DEATH EVENT
+# ============================================================
+
+on death:
+
+    if {deathrace.running} is not true:
+        stop
+
+    set {_player} to victim
+    set {_uuid} to uuid of {_player}
+
+    # --------------------------------------------------------
+    # Get Minecraft death message
+    # --------------------------------------------------------
+
+    set {_message} to death message
+
+    # --------------------------------------------------------
+    # Temporary category
+    #
+    # If an attacker exists:
+    #   KILL
+    #
+    # Otherwise:
+    #   use the death message itself as temporary category
+    #
+    # This is only for Phase 1 testing.
+    # --------------------------------------------------------
+
+    if attacker is set:
+
+        set {_category} to "KILL"
+
+        set {_attacker} to "%attacker%"
+
+    else:
+
+        set {_category} to "%{_message}%"
+
+        set {_attacker} to "NONE"
+
+
+    # --------------------------------------------------------
+    # DEBUG : raw death information
+    # --------------------------------------------------------
+
+    if {deathrace.debug} is true:
+
+        send "{@prefix} &8&m--------------------------------" to {_player}
+        send "{@prefix} &7[DEBUG] &fDeath detected" to {_player}
+        send "{@prefix} &7Player: &f%{_player}%" to {_player}
+        send "{@prefix} &7Message: &f%{_message}%" to {_player}
+        send "{@prefix} &7Attacker: &f%{_attacker}%" to {_player}
+        send "{@prefix} &7Category: &e%{_category}%" to {_player}
+
+
+    # --------------------------------------------------------
+    # Duplicate check
+    # --------------------------------------------------------
+
+    if {deathrace.collected::%{_uuid}%::%{_category}%} is set:
+
+        if {deathrace.debug} is true:
+
+            send "{@prefix} &7Result: &cALREADY COLLECTED" to {_player}
+            send "{@prefix} &7Point: &c+0" to {_player}
+            send "{@prefix} &8&m--------------------------------" to {_player}
+
+        stop
+
+
+    # --------------------------------------------------------
+    # NEW DEATH CATEGORY
+    # --------------------------------------------------------
+
+    set {deathrace.collected::%{_uuid}%::%{_category}%} to true
+
+    add 1 to {deathrace.points::%{_uuid}%}
+
+
+    # --------------------------------------------------------
+    # Result
+    # --------------------------------------------------------
+
+    if {deathrace.debug} is true:
+
+        send "{@prefix} &7Result: &aNEW" to {_player}
+        send "{@prefix} &7Point: &a+1" to {_player}
+        send "{@prefix} &7Total: &e%{deathrace.points::%{_uuid}%}%" to {_player}
+        send "{@prefix} &8&m--------------------------------" to {_player}
+
+
+    # --------------------------------------------------------
+    # Console log
+    # Only important information.
+    # --------------------------------------------------------
+
+    if {deathrace.debug} is true:
+
+        send "[DeathRace DEBUG] Player=%{_player}% | Category=%{_category}% | Point=+1 | Total=%{deathrace.points::%{_uuid}%}%" to console

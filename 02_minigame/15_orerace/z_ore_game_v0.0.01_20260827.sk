@@ -1,0 +1,228 @@
+# ============================================================
+# ORERACE GAME SYSTEM
+# Version : v0.1.00
+#
+# MINIMUM ORE TEST
+#
+# Minecraft Java Edition + Paper + Skript
+#
+# Test:
+#   IRON_ORE    = +2
+#   GOLD_ORE    = +2
+#   DIAMOND_ORE = +5
+#
+# Commands:
+#   /orerace start
+#   /orerace stop
+#   /orerace reset
+#   /orerace status
+#   /orerace debug
+#
+# ============================================================
+
+options:
+    prefix: &8[&6OreRace&8]&r
+
+
+# ============================================================
+# START
+# ============================================================
+
+command /orerace start:
+    permission: op
+    trigger:
+
+        set {orerace.running} to true
+
+        send "{@prefix} &aOreRace START!" to all players
+
+        if {orerace.debug} is true:
+            send "{@prefix} &7[DEBUG] State: &aRUNNING" to player
+
+
+# ============================================================
+# STOP
+# ============================================================
+
+command /orerace stop:
+    permission: op
+    trigger:
+
+        set {orerace.running} to false
+
+        send "{@prefix} &cOreRace STOPPED." to all players
+
+
+# ============================================================
+# RESET
+# ============================================================
+
+command /orerace reset:
+    permission: op
+    trigger:
+
+        delete {orerace.points::*}
+        delete {orerace.count::*}
+
+        set {orerace.running} to false
+
+        execute console command "scoreboard objectives remove orePoints"
+
+        send "{@prefix} &eReset complete." to player
+
+
+# ============================================================
+# STATUS
+# ============================================================
+
+command /orerace status:
+    permission: op
+    trigger:
+
+        send "&8&m--------------------------------"
+        send "&6ORE RACE"
+        send "&8&m--------------------------------"
+
+        if {orerace.running} is true:
+            send "&7State: &aRUNNING"
+        else:
+            send "&7State: &cSTOPPED"
+
+        send ""
+
+        loop all players:
+
+            set {_uuid} to uuid of loop-player
+
+            set {_points} to {orerace.points::%{_uuid}%}
+
+            if {_points} is not set:
+                set {_points} to 0
+
+            set {_count} to {orerace.count::%{_uuid}%}
+
+            if {_count} is not set:
+                set {_count} to 0
+
+            send "&f%loop-player% &7: &e%{_points}% pt &7(%{_count}% ores)"
+
+        send "&8&m--------------------------------"
+
+
+# ============================================================
+# DEBUG TOGGLE
+# ============================================================
+
+command /orerace debug:
+    permission: op
+    trigger:
+
+        if {orerace.debug} is true:
+
+            set {orerace.debug} to false
+
+            send "{@prefix} &7DEBUG: &cOFF"
+
+        else:
+
+            set {orerace.debug} to true
+
+            send "{@prefix} &7DEBUG: &aON"
+
+
+# ============================================================
+# SCOREBOARD
+# ============================================================
+
+on script load:
+
+    execute console command "scoreboard objectives remove orePoints"
+
+    execute console command "scoreboard objectives add orePoints dummy Points"
+
+
+# ============================================================
+# BLOCK BREAK
+# ============================================================
+
+on break:
+
+    if {orerace.running} is not true:
+        stop
+
+    set {_player} to player
+    set {_uuid} to uuid of {_player}
+
+    set {_block} to event-block
+
+
+    # --------------------------------------------------------
+    # IRON ORE
+    # --------------------------------------------------------
+
+    if {_block} is iron ore:
+
+        set {_ore} to "IRON_ORE"
+        set {_point} to 2
+
+
+    # --------------------------------------------------------
+    # GOLD ORE
+    # --------------------------------------------------------
+
+    else if {_block} is gold ore:
+
+        set {_ore} to "GOLD_ORE"
+        set {_point} to 2
+
+
+    # --------------------------------------------------------
+    # DIAMOND ORE
+    # --------------------------------------------------------
+
+    else if {_block} is diamond ore:
+
+        set {_ore} to "DIAMOND_ORE"
+        set {_point} to 5
+
+
+    # --------------------------------------------------------
+    # Not target ore
+    # --------------------------------------------------------
+
+    else:
+
+        stop
+
+
+    # --------------------------------------------------------
+    # POINT
+    # --------------------------------------------------------
+
+    add {_point} to {orerace.points::%{_uuid}%}
+
+    add 1 to {orerace.count::%{_uuid}%}
+
+    set {_total} to {orerace.points::%{_uuid}%}
+
+
+    # --------------------------------------------------------
+    # SCOREBOARD
+    # --------------------------------------------------------
+
+    execute console command "scoreboard players set %{_player}% orePoints %{_total}%"
+
+
+    # --------------------------------------------------------
+    # DEBUG
+    # --------------------------------------------------------
+
+    if {orerace.debug} is true:
+
+        send "{@prefix} &8&m--------------------------------" to {_player}
+        send "{@prefix} &7[DEBUG] Ore detected!" to {_player}
+        send "{@prefix} &7Player: &f%{_player}%" to {_player}
+        send "{@prefix} &7Ore: &e%{_ore}%" to {_player}
+        send "{@prefix} &7Point: &a+%{_point}%" to {_player}
+        send "{@prefix} &7Total: &e%{_total}%"
+        send "{@prefix} &8&m--------------------------------" to {_player}

@@ -1,0 +1,481 @@
+# ============================================================
+# FARRACE DISTANCE TEST
+# Version : v0.1.00
+# Date    : 2026-08-27
+#
+# Minecraft Java Edition + Paper + Skript
+#
+# ============================================================
+#
+# Purpose
+#
+#   Start地点から各プレイヤーまでの
+#   XZ平面上の距離を測定するミニテスト。
+#
+#   Y座標は距離計算に使用しない。
+#
+#
+# Distance
+#
+#   sqrt((X - StartX)^2 + (Z - StartZ)^2)
+#
+#
+# Features
+#
+#   ・全プレイヤー共通スタート地点
+#   ・スタート地点保存
+#   ・全プレイヤーをスタート地点へTP
+#   ・全プレイヤーのリスポーン地点設定
+#   ・現在位置取得
+#   ・XZ距離計算
+#   ・整数化
+#   ・Scoreboard表示
+#   ・DEBUG MODE
+#   ・DEBUG MODE時、5秒ごとにConsoleへログ
+#
+#
+# Commands
+#
+#   /farrace set
+#   /farrace start
+#   /farrace stop
+#   /farrace debug
+#   /farrace reset
+#   /farrace status
+#
+# ============================================================
+
+
+options:
+    prefix: &8[&bFarRace&8]&r
+
+
+# ============================================================
+# SET
+#
+# 現在地を全プレイヤー共通のスタート地点として保存
+# ============================================================
+
+command /farrace set:
+    permission: op
+    trigger:
+
+        set {farrace.start.x} to x-coordinate of player
+        set {farrace.start.y} to y-coordinate of player
+        set {farrace.start.z} to z-coordinate of player
+        set {farrace.start.world} to world of player
+
+        send "{@prefix} &aStart position set!" to player
+
+        send "{@prefix} &7X: &f%{farrace.start.x}%" to player
+        send "{@prefix} &7Y: &f%{farrace.start.y}%" to player
+        send "{@prefix} &7Z: &f%{farrace.start.z}%" to player
+        send "{@prefix} &7World: &f%{farrace.start.world}%" to player
+
+
+# ============================================================
+# START
+#
+# ・ゲーム開始
+# ・全プレイヤーをスタート地点へTP
+# ・リスポーン地点設定
+# ・Scoreboard初期化
+# ============================================================
+
+command /farrace start:
+    permission: op
+    trigger:
+
+        # ----------------------------------------------------
+        # Start地点チェック
+        # ----------------------------------------------------
+
+        if {farrace.start.x} is not set:
+
+            send "{@prefix} &cStart position is not set." to player
+            send "{@prefix} &7Use &f/farrace set &7first." to player
+
+            stop
+
+
+        # ----------------------------------------------------
+        # Running
+        # ----------------------------------------------------
+
+        set {farrace.running} to true
+
+
+        # ----------------------------------------------------
+        # Scoreboard
+        # ----------------------------------------------------
+
+        execute console command "scoreboard objectives remove farDistance"
+        execute console command "scoreboard objectives add farDistance dummy Distance"
+        execute console command "scoreboard objectives setdisplay sidebar farDistance"
+
+
+        # ----------------------------------------------------
+        # World Spawn
+        # ----------------------------------------------------
+
+        execute console command "setworldspawn %{farrace.start.x}% %{farrace.start.y}% %{farrace.start.z}%"
+
+
+        # ----------------------------------------------------
+        # Respawn Point
+        # ----------------------------------------------------
+
+        execute console command "spawnpoint @a %{farrace.start.x}% %{farrace.start.y}% %{farrace.start.z}%"
+
+
+        # ----------------------------------------------------
+        # Teleport
+        # ----------------------------------------------------
+
+        execute console command "tp @a %{farrace.start.x}% %{farrace.start.y}% %{farrace.start.z}%"
+
+
+        # ----------------------------------------------------
+        # Player initialization
+        # ----------------------------------------------------
+
+        loop all players:
+
+            set {_uuid} to uuid of loop-player
+
+            set {farrace.distance::%{_uuid}%} to 0
+
+            execute console command "scoreboard players set %loop-player% farDistance 0"
+
+
+        # ----------------------------------------------------
+        # Start message
+        # ----------------------------------------------------
+
+        send "{@prefix} &aFarRace START!" to all players
+
+        send "{@prefix} &7Start: &f%{farrace.start.x}% &7/ &f%{farrace.start.y}% &7/ &f%{farrace.start.z}%" to all players
+
+
+        # ----------------------------------------------------
+        # Debug information
+        # ----------------------------------------------------
+
+        if {farrace.debug} is true:
+
+            log "[FarRace DEBUG] Game started."
+            log "[FarRace DEBUG] Start X=%{farrace.start.x}% Y=%{farrace.start.y}% Z=%{farrace.start.z}% World=%{farrace.start.world}%"
+
+
+# ============================================================
+# STOP
+#
+# 距離計測を停止
+# Scoreboardは残す
+# ============================================================
+
+command /farrace stop:
+    permission: op
+    trigger:
+
+        if {farrace.running} is not true:
+
+            send "{@prefix} &eFarRace is not running." to player
+            stop
+
+
+        set {farrace.running} to false
+
+        send "{@prefix} &cFarRace STOPPED." to all players
+
+
+# ============================================================
+# DEBUG
+#
+# ON / OFFを切り替える
+#
+# ON中は5秒ごとにConsoleへ
+# 各プレイヤーの座標と距離を出力
+# ============================================================
+
+command /farrace debug:
+    permission: op
+    trigger:
+
+        if {farrace.debug} is true:
+
+            set {farrace.debug} to false
+
+            send "{@prefix} &7DEBUG MODE: &cOFF" to player
+
+            log "[FarRace DEBUG] DEBUG MODE OFF."
+
+
+        else:
+
+            set {farrace.debug} to true
+
+            send "{@prefix} &7DEBUG MODE: &aON" to player
+
+            log "[FarRace DEBUG] DEBUG MODE ON."
+
+            if {farrace.start.x} is set:
+
+                log "[FarRace DEBUG] Start X=%{farrace.start.x}% Y=%{farrace.start.y}% Z=%{farrace.start.z}%"
+
+            else:
+
+                log "[FarRace DEBUG] Start position is NOT SET."
+
+
+# ============================================================
+# RESET
+#
+# ゲーム状態とScoreboardをリセット
+# ============================================================
+
+command /farrace reset:
+    permission: op
+    trigger:
+
+        set {farrace.running} to false
+        set {farrace.debug} to false
+
+        delete {farrace.start.x}
+        delete {farrace.start.y}
+        delete {farrace.start.z}
+        delete {farrace.start.world}
+
+        delete {farrace.distance::*}
+
+        execute console command "scoreboard objectives remove farDistance"
+
+        send "{@prefix} &eFarRace reset complete." to player
+
+
+# ============================================================
+# STATUS
+#
+# 現在の状態をチャットに表示
+# ============================================================
+
+command /farrace status:
+    permission: op
+    trigger:
+
+        send "&8&m--------------------------------" to player
+        send "&bFarRace STATUS" to player
+        send "&8&m--------------------------------" to player
+
+
+        # ----------------------------------------------------
+        # Game State
+        # ----------------------------------------------------
+
+        if {farrace.running} is true:
+
+            send "&7State : &aRUNNING" to player
+
+        else:
+
+            send "&7State : &cSTOPPED" to player
+
+
+        # ----------------------------------------------------
+        # Debug
+        # ----------------------------------------------------
+
+        if {farrace.debug} is true:
+
+            send "&7Debug : &aON" to player
+
+        else:
+
+            send "&7Debug : &cOFF" to player
+
+
+        # ----------------------------------------------------
+        # Start Position
+        # ----------------------------------------------------
+
+        if {farrace.start.x} is set:
+
+            send "" to player
+
+            send "&7Start X : &f%{farrace.start.x}%" to player
+            send "&7Start Y : &f%{farrace.start.y}%" to player
+            send "&7Start Z : &f%{farrace.start.z}%" to player
+
+
+        # ----------------------------------------------------
+        # Player distances
+        # ----------------------------------------------------
+
+        send "" to player
+
+        loop all players:
+
+            set {_uuid} to uuid of loop-player
+
+            set {_distance} to {farrace.distance::%{_uuid}%}
+
+            if {_distance} is not set:
+
+                set {_distance} to 0
+
+            send "&f%loop-player% &7: &e%{_distance}% blocks" to player
+
+
+        send "&8&m--------------------------------" to player
+
+
+# ============================================================
+# DISTANCE CALCULATION
+#
+# 1秒ごとに各プレイヤーの距離を更新
+#
+# Yは使用しない
+#
+# sqrt(
+#   (X - StartX)^2
+#   +
+#   (Z - StartZ)^2
+# )
+# ============================================================
+
+every 1 second:
+
+    if {farrace.running} is not true:
+
+        stop
+
+
+    # --------------------------------------------------------
+    # Start position check
+    # --------------------------------------------------------
+
+    if {farrace.start.x} is not set:
+
+        stop
+
+
+    # --------------------------------------------------------
+    # Every player
+    # --------------------------------------------------------
+
+    loop all players:
+
+        set {_uuid} to uuid of loop-player
+
+
+        # ----------------------------------------------------
+        # Current X / Z
+        # ----------------------------------------------------
+
+        set {_currentX} to x-coordinate of loop-player
+        set {_currentZ} to z-coordinate of loop-player
+
+
+        # ----------------------------------------------------
+        # Difference
+        # ----------------------------------------------------
+
+        set {_dx} to {_currentX} - {farrace.start.x}
+        set {_dz} to {_currentZ} - {farrace.start.z}
+
+
+        # ----------------------------------------------------
+        # Distance
+        #
+        # Y is intentionally ignored.
+        # ----------------------------------------------------
+
+        set {_distance} to sqrt(({_dx} * {_dx}) + ({_dz} * {_dz}))
+
+
+        # ----------------------------------------------------
+        # Scoreboard uses integer
+        # ----------------------------------------------------
+
+        set {_distanceInt} to floor({_distance})
+
+
+        # ----------------------------------------------------
+        # Save
+        # ----------------------------------------------------
+
+        set {farrace.distance::%{_uuid}%} to {_distanceInt}
+
+
+        # ----------------------------------------------------
+        # Scoreboard
+        # ----------------------------------------------------
+
+        execute console command "scoreboard players set %loop-player% farDistance %{_distanceInt}%"
+
+
+# ============================================================
+# DEBUG LOG
+#
+# DEBUG MODE ONの場合のみ5秒ごとに実行
+#
+# Server Consoleに出力される。
+#
+# ============================================================
+
+every 5 seconds:
+
+    if {farrace.debug} is not true:
+
+        stop
+
+
+    if {farrace.start.x} is not set:
+
+        log "[FarRace DEBUG] Start position is NOT SET."
+
+        stop
+
+
+    log "[FarRace DEBUG] ===== Distance Check ====="
+
+
+    loop all players:
+
+        set {_uuid} to uuid of loop-player
+
+
+        # ----------------------------------------------------
+        # Current Position
+        # ----------------------------------------------------
+
+        set {_x} to x-coordinate of loop-player
+        set {_y} to y-coordinate of loop-player
+        set {_z} to z-coordinate of loop-player
+
+
+        # ----------------------------------------------------
+        # Difference
+        # ----------------------------------------------------
+
+        set {_dx} to {_x} - {farrace.start.x}
+        set {_dz} to {_z} - {farrace.start.z}
+
+
+        # ----------------------------------------------------
+        # Distance
+        # ----------------------------------------------------
+
+        set {_distance} to sqrt(({_dx} * {_dx}) + ({_dz} * {_dz}))
+
+        set {_distanceInt} to floor({_distance})
+
+
+        # ----------------------------------------------------
+        # Console Log
+        # ----------------------------------------------------
+
+        log "[FarRace DEBUG] Player=%loop-player% Start=(%{farrace.start.x}%,%{farrace.start.y}%,%{farrace.start.z}%) Current=(%{_x}%,%{_y}%,%{_z}%) DX=%{_dx}% DZ=%{_dz}% Distance=%{_distance}% Score=%{_distanceInt}%"
+
+
+    log "[FarRace DEBUG] =========================="

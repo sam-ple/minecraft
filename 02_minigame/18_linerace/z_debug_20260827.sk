@@ -1,0 +1,279 @@
+# ============================================================
+# RESPAWN DEBUG TEST
+# Version : v0.2.00
+#
+# Command
+#   /rtdebug
+#
+# TEST
+#   1. /rtdebug
+#   2. 適当な場所へ移動
+#   3. /kill
+#   4. リスポーン
+#
+# latest.log にはテスト時だけ結果を出力
+#
+# ============================================================
+
+
+# ============================================================
+# LOAD
+# ============================================================
+
+on load:
+
+    delete {rtdebug.active::*}
+    delete {rtdebug.x::*}
+    delete {rtdebug.y::*}
+    delete {rtdebug.z::*}
+    delete {rtdebug.world::*}
+    delete {rtdebug.death.x::*}
+    delete {rtdebug.death.y::*}
+    delete {rtdebug.death.z::*}
+
+    send "[RespawnDebug] loaded." to console
+
+
+# ============================================================
+# START DEBUG
+# ============================================================
+
+command /rtdebug:
+
+    permission: op
+
+    trigger:
+
+        # ----------------------------------------------------
+        # 現在のブロック座標
+        # ----------------------------------------------------
+
+        set {_bx} to floor(x-coordinate of player)
+        set {_by} to floor(y-coordinate of player)
+        set {_bz} to floor(z-coordinate of player)
+
+        set {_world} to world of player
+
+
+        # ----------------------------------------------------
+        # 金ブロック
+        # ----------------------------------------------------
+
+        set block at location({_bx}, {_by} - 1, {_bz}, {_world}) to gold block
+
+
+        # ----------------------------------------------------
+        # リスポーン座標
+        #
+        # 金ブロックの真上
+        # X/Z = .5
+        # Y   = 金ブロック + 1
+        # ----------------------------------------------------
+
+        set {_rx} to {_bx} + 0.5
+        set {_ry} to {_by}
+        set {_rz} to {_bz} + 0.5
+
+
+        # ----------------------------------------------------
+        # 保存
+        # ----------------------------------------------------
+
+        set {rtdebug.x::%player%} to {_rx}
+        set {rtdebug.y::%player%} to {_ry}
+        set {rtdebug.z::%player%} to {_rz}
+        set {rtdebug.world::%player%} to {_world}
+
+        set {rtdebug.active::%player%} to true
+
+
+        # ----------------------------------------------------
+        # Vanilla spawnpoint
+        #
+        # 比較用として設定
+        # ----------------------------------------------------
+
+        execute console command "spawnpoint %player% %{_bx}% %{_by}% %{_bz}%"
+
+
+        # ----------------------------------------------------
+        # 現在位置をターゲットへ
+        # ----------------------------------------------------
+
+        teleport player to location({_rx}, {_ry}, {_rz}, {_world})
+
+
+        # ----------------------------------------------------
+        # プレイヤー表示
+        # ----------------------------------------------------
+
+        send "" to player
+        send "&6&l========== Respawn Debug ==========" to player
+        send "&e金ブロック: &f%{_bx}%, %{_by} - 1, %{_bz}%" to player
+        send "&eTarget: &f%{_rx}%, %{_ry}%, %{_rz}%" to player
+        send "&eWorld: &f%{_world}%" to player
+        send "" to player
+        send "&a設定完了。" to player
+        send "&7移動してから &f/kill &7してください。" to player
+        send "&6&l===================================" to player
+        send "" to player
+
+
+        # ----------------------------------------------------
+        # LOG
+        # ----------------------------------------------------
+
+        send "[RespawnDebug] SET | player=%player% | gold=%{_bx}%,%{_by} - 1,%{_bz}% | target=%{_rx}%,%{_ry}%,%{_rz}% | world=%{_world}%" to console
+
+
+# ============================================================
+# DEATH
+# ============================================================
+
+on death of player:
+
+    if {rtdebug.active::%victim%} is not set:
+
+        stop
+
+
+    set {_p} to victim
+
+    set {rtdebug.death.x::%{_p}%} to x-coordinate of {_p}
+    set {rtdebug.death.y::%{_p}%} to y-coordinate of {_p}
+    set {rtdebug.death.z::%{_p}%} to z-coordinate of {_p}
+
+
+    # --------------------------------------------------------
+    # LOG ONLY
+    # --------------------------------------------------------
+
+    send "[RespawnDebug] DEATH | player=%{_p}% | death=%{rtdebug.death.x::%{_p}%}%,%{rtdebug.death.y::%{_p}%}%,%{rtdebug.death.z::%{_p}%}%" to console
+
+
+# ============================================================
+# RESPAWN
+# ============================================================
+
+on respawn:
+
+    if {rtdebug.active::%player%} is not set:
+
+        stop
+
+
+    # --------------------------------------------------------
+    # Target
+    # --------------------------------------------------------
+
+    set {_tx} to {rtdebug.x::%player%}
+    set {_ty} to {rtdebug.y::%player%}
+    set {_tz} to {rtdebug.z::%player%}
+    set {_world} to {rtdebug.world::%player%}
+
+
+    # --------------------------------------------------------
+    # Skript側でリスポーン先を指定
+    # --------------------------------------------------------
+
+    set respawn location to location({_tx}, {_ty}, {_tz}, {_world})
+
+
+    # --------------------------------------------------------
+    # LOG
+    # --------------------------------------------------------
+
+    send "[RespawnDebug] RESPAWN EVENT | player=%player% | target=%{_tx}%,%{_ty}%,%{_tz}% | world=%{_world}%" to console
+
+
+    # --------------------------------------------------------
+    # 少し待って実際の座標を確認
+    # --------------------------------------------------------
+
+    wait 2 ticks
+
+
+    set {_ax} to x-coordinate of player
+    set {_ay} to y-coordinate of player
+    set {_az} to z-coordinate of player
+
+
+    # --------------------------------------------------------
+    # 差分
+    # --------------------------------------------------------
+
+    set {_dx} to {_ax} - {_tx}
+    set {_dy} to {_ay} - {_ty}
+    set {_dz} to {_az} - {_tz}
+
+
+    # --------------------------------------------------------
+    # 判定
+    # --------------------------------------------------------
+
+    if abs({_dx}) < 0.01:
+
+        if abs({_dy}) < 0.01:
+
+            if abs({_dz}) < 0.01:
+
+                set {_result} to "OK"
+
+            else:
+
+                set {_result} to "NG"
+
+        else:
+
+            set {_result} to "NG"
+
+    else:
+
+        set {_result} to "NG"
+
+
+    # --------------------------------------------------------
+    # 最終結果
+    # --------------------------------------------------------
+
+    send "[RespawnDebug] RESULT | player=%player% | actual=%{_ax}%,%{_ay}%,%{_az}% | delta=%{_dx}%,%{_dy}%,%{_dz}% | result=%{_result}%" to console
+
+
+    # --------------------------------------------------------
+    # プレイヤーにも結果
+    # --------------------------------------------------------
+
+    if {_result} is "OK":
+
+        send "&a[RespawnDebug] OK &7→ 金ブロック上に正常復帰" to player
+
+    else:
+
+        send "&c[RespawnDebug] NG &7→ リスポーン位置がズレています。" to player
+
+        send "&7Target: &f%{_tx}%, %{_ty}%, %{_tz}%" to player
+        send "&7Actual: &f%{_ax}%, %{_ay}%, %{_az}%" to player
+
+
+# ============================================================
+# CLEAR
+# ============================================================
+
+command /rtdebugclear:
+
+    permission: op
+
+    trigger:
+
+        delete {rtdebug.active::%player%}
+        delete {rtdebug.x::%player%}
+        delete {rtdebug.y::%player%}
+        delete {rtdebug.z::%player%}
+        delete {rtdebug.world::%player%}
+        delete {rtdebug.death.x::%player%}
+        delete {rtdebug.death.y::%player%}
+        delete {rtdebug.death.z::%player%}
+
+        send "&c[RespawnDebug] テスト設定を解除しました。" to player
+
+        send "[RespawnDebug] CLEAR | player=%player%" to console

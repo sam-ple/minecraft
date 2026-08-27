@@ -1,0 +1,223 @@
+# ============================================================
+# SKELETON DROP TEST
+# Version : v0.1.00
+#
+# Minecraft Java Edition + Paper + Skript
+#
+# TEST
+#   ・各プレイヤーの周囲にSkeletonを数体召喚
+#   ・素手で簡単に倒せるHP
+#   ・プレイヤーがSkeletonを倒した場合
+#     50%の確率でEmeraldを1個配布
+#
+# Commands
+#   /skeltest start
+#   /skeltest stop
+#   /skeltest reset
+#   /skeltest debug
+#
+# ============================================================
+
+
+options:
+    prefix: &8[&2SkeletonTest&8]&r
+    skeleton-count: 5
+
+
+# ============================================================
+# START
+# ============================================================
+
+command /skeltest start:
+    permission: op
+    trigger:
+
+        set {skeltest.running} to true
+
+        send "{@prefix} &aSkeleton Test START!" to all players
+
+        # ----------------------------------------------------
+        # Spawn skeletons around each player
+        # ----------------------------------------------------
+
+        loop all players:
+
+            loop {@skeleton-count} times:
+
+                # ランダムな周囲に召喚
+                set {_x} to x-coordinate of loop-player
+                set {_y} to y-coordinate of loop-player
+                set {_z} to z-coordinate of loop-player
+
+                add random integer between -5 and 5 to {_x}
+                add random integer between -5 and 5 to {_z}
+
+                spawn skeleton at location({_x}, {_y}, {_z}, world of loop-player)
+
+                set {_skeleton} to last spawned entity
+
+                # ------------------------------------------------
+                # 素手2発程度で倒せるようにHPを低く設定
+                # ------------------------------------------------
+
+                set maximum health of {_skeleton} to 4
+                set health of {_skeleton} to 4
+
+                # ------------------------------------------------
+                # 装備を外す
+                # ------------------------------------------------
+
+                clear helmet of {_skeleton}
+                clear chestplate of {_skeleton}
+                clear leggings of {_skeleton}
+                clear boots of {_skeleton}
+                clear tool of {_skeleton}
+
+                # ------------------------------------------------
+                # 管理用タグ
+                # ------------------------------------------------
+
+                add {_skeleton} to {skeltest.mobs::*}
+
+                # AIは通常通り
+
+
+        send "{@prefix} &7Skeletons spawned." to all players
+
+
+# ============================================================
+# SKELETON DEATH
+# ============================================================
+
+on death of skeleton:
+
+    if {skeltest.running} is not true:
+        stop
+
+    # --------------------------------------------------------
+    # このテストで召喚したSkeletonか確認
+    # --------------------------------------------------------
+
+    if victim is not in {skeltest.mobs::*}:
+        stop
+
+
+    # --------------------------------------------------------
+    # 倒したプレイヤーを取得
+    # --------------------------------------------------------
+
+    if attacker is not a player:
+
+        if {skeltest.debug} is true:
+            send "{@prefix} &7[DEBUG] Skeleton killed by non-player." to all players
+
+        stop
+
+
+    set {_player} to attacker
+
+
+    # --------------------------------------------------------
+    # 50% probability
+    # --------------------------------------------------------
+
+    chance of 50%:
+
+        give 1 emerald to {_player}
+
+        if {skeltest.debug} is true:
+
+            send "{@prefix} &a[DEBUG] %name of {_player}% -> DROP SUCCESS (50%%) -> Emerald x1" to all players
+
+    else:
+
+        if {skeltest.debug} is true:
+
+            send "{@prefix} &c[DEBUG] %name of {_player}% -> DROP FAIL (50%%)" to all players
+
+
+    # --------------------------------------------------------
+    # Remove from managed list
+    # --------------------------------------------------------
+
+    remove victim from {skeltest.mobs::*}
+
+
+# ============================================================
+# STOP
+# ============================================================
+
+command /skeltest stop:
+    permission: op
+    trigger:
+
+        set {skeltest.running} to false
+
+        # ----------------------------------------------------
+        # Remove spawned skeletons
+        # ----------------------------------------------------
+
+        loop {skeltest.mobs::*}:
+
+            if loop-value is alive:
+
+                kill loop-value
+
+        clear {skeltest.mobs::*}
+
+        send "{@prefix} &cSkeleton Test STOPPED." to player
+
+
+# ============================================================
+# RESET
+# ============================================================
+
+command /skeltest reset:
+    permission: op
+    trigger:
+
+        set {skeltest.running} to false
+
+        loop {skeltest.mobs::*}:
+
+            if loop-value is alive:
+
+                kill loop-value
+
+        clear {skeltest.mobs::*}
+
+        set {skeltest.debug} to false
+
+        send "{@prefix} &eReset complete." to player
+
+
+# ============================================================
+# DEBUG
+# ============================================================
+
+command /skeltest debug:
+    permission: op
+    trigger:
+
+        if {skeltest.debug} is true:
+
+            set {skeltest.debug} to false
+
+            send "{@prefix} &7DEBUG MODE: &cOFF" to player
+
+        else:
+
+            set {skeltest.debug} to true
+
+            send "{@prefix} &7DEBUG MODE: &aON" to player
+
+
+# ============================================================
+# SCRIPT LOAD
+# ============================================================
+
+on script load:
+
+    delete {skeltest.running}
+    clear {skeltest.mobs::*}
+    set {skeltest.debug} to false
