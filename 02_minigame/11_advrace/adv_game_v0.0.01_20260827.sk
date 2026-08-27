@@ -1,0 +1,188 @@
+# ============================================================
+# ADVANCEMENT TEST
+# Version : v0.2.00
+#
+# Requires
+#   Skript
+#   SkBee
+#
+# TEST
+#   ・進捗達成イベントを直接取得
+#   ・プレイヤー取得
+#   ・進捗取得
+#   ・+1 POINT
+#   ・DEBUG
+#
+# Command
+#   /advtest start
+#   /advtest stop
+#   /advtest reset
+#   /advtest debug
+#   /advtest status
+#
+# ============================================================
+
+options:
+    prefix: &8[&bAdvTest&8]&r
+
+
+# ============================================================
+# COMMAND
+# ============================================================
+
+command /advtest [<text>]:
+    permission: op
+    trigger:
+
+        if arg-1 is "start":
+
+            set {advtest.running} to true
+
+            execute console command "scoreboard objectives remove advTestPoints"
+            execute console command "scoreboard objectives add advTestPoints dummy Points"
+            execute console command "scoreboard objectives setdisplay sidebar advTestPoints"
+
+            loop all players:
+                execute console command "scoreboard players set %loop-player% advTestPoints 0"
+
+            send "{@prefix} &aAdvancement Test START!" to all players
+            stop
+
+
+        if arg-1 is "stop":
+
+            set {advtest.running} to false
+
+            send "{@prefix} &cAdvancement Test STOPPED." to all players
+            stop
+
+
+        if arg-1 is "reset":
+
+            set {advtest.running} to false
+
+            delete {advtest.points::*}
+            delete {advtest.last_advancement::*}
+
+            execute console command "scoreboard objectives remove advTestPoints"
+
+            send "{@prefix} &eReset complete." to player
+            stop
+
+
+        if arg-1 is "debug":
+
+            if {advtest.debug} is true:
+
+                set {advtest.debug} to false
+                send "{@prefix} &7DEBUG: &cOFF" to player
+
+            else:
+
+                set {advtest.debug} to true
+                send "{@prefix} &7DEBUG: &aON" to player
+
+            stop
+
+
+        if arg-1 is "status":
+
+            send "&8&m--------------------------------" to player
+            send "&bADVANCEMENT TEST" to player
+            send "&8&m--------------------------------" to player
+
+            if {advtest.running} is true:
+                send "&7State: &aRUNNING" to player
+            else:
+                send "&7State: &cSTOPPED" to player
+
+            loop all players:
+
+                set {_uuid} to uuid of loop-player
+                set {_points} to {advtest.points::%{_uuid}%}
+
+                if {_points} is not set:
+                    set {_points} to 0
+
+                send "&f%loop-player% &7: &e%{_points}% point(s)" to player
+
+            send "&8&m--------------------------------" to player
+            stop
+
+
+        send "&8&m--------------------------------" to player
+        send "&bADVANCEMENT TEST" to player
+        send "&f/advtest start"
+        send "&f/advtest stop"
+        send "&f/advtest reset"
+        send "&f/advtest debug"
+        send "&f/advtest status"
+        send "&8&m--------------------------------" to player
+
+
+# ============================================================
+# ADVANCEMENT EVENT
+# ============================================================
+
+on player advancement done:
+
+    if {advtest.running} is not true:
+        stop
+
+
+    # --------------------------------------------------------
+    # PLAYER
+    # --------------------------------------------------------
+
+    set {_player} to event-player
+    set {_uuid} to uuid of {_player}
+
+
+    # --------------------------------------------------------
+    # ADVANCEMENT
+    # --------------------------------------------------------
+
+    set {_advancement} to event-advancement
+
+
+    # --------------------------------------------------------
+    # POINT
+    # --------------------------------------------------------
+
+    add 1 to {advtest.points::%{_uuid}%}
+
+    set {_points} to {advtest.points::%{_uuid}%}
+
+
+    # --------------------------------------------------------
+    # SCOREBOARD
+    # --------------------------------------------------------
+
+    execute console command "scoreboard players set %name of {_player}% advTestPoints %{_points}%"
+
+
+    # --------------------------------------------------------
+    # RESULT
+    # --------------------------------------------------------
+
+    send "{@prefix} &aADVANCEMENT DETECTED!" to {_player}
+    send "{@prefix} &7Player: &f%{_player}%" to {_player}
+    send "{@prefix} &7Advancement: &e%{_advancement}%" to {_player}
+    send "{@prefix} &7Point: &a+1" to {_player}
+    send "{@prefix} &7Total: &e%{_points}%" to {_player}
+
+
+    # --------------------------------------------------------
+    # DEBUG
+    # --------------------------------------------------------
+
+    if {advtest.debug} is true:
+
+        send "{@prefix} &8&m--------------------------------" to console
+        send "{@prefix} &7[DEBUG] Advancement detected!" to console
+        send "{@prefix} &7Player: &f%{_player}%" to console
+        send "{@prefix} &7UUID: &f%{_uuid}%" to console
+        send "{@prefix} &7Advancement: &e%{_advancement}%" to console
+        send "{@prefix} &7Point: &a+1" to console
+        send "{@prefix} &7Total: &e%{_points}%" to console
+        send "{@prefix} &8&m--------------------------------" to console
