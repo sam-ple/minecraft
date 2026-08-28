@@ -1,6 +1,6 @@
 # ============================================================
 # LINERACE COURSE GENERATOR
-# Version : v0.8.00
+# Version : v0.1.00
 #
 # Minecraft Java Edition + Minescript
 #
