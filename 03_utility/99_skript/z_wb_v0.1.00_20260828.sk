@@ -1,0 +1,205 @@
+# ============================================================
+# WORLDBORDER MANAGER
+# Version : v0.1.00
+#
+# Commands
+#   /wb set
+#       現在地をワールドボーダー中心として登録
+#
+#   /wb <size>
+#       登録した中心を使用してワールドボーダーを設定
+#
+#   /wb info
+#       登録座標と現在のワールドボーダーを確認
+#
+#   /wb reset
+#       登録した中心座標を削除
+#       ※ワールドボーダー自体は変更しない
+#
+# Examples
+#   /wb set
+#   /wb 150
+#   /wb 200
+#   /wb info
+#   /wb reset
+#
+# ============================================================
+
+options:
+
+    prefix: &8[&bWorldBorder&8]&r
+
+
+# ============================================================
+# COMMAND
+# ============================================================
+
+command /wb [<text>]:
+    permission: wb.use
+    permission message: {@prefix} &cこのコマンドを使用する権限がありません。
+    trigger:
+
+        # ----------------------------------------------------
+        # /wb
+        # ----------------------------------------------------
+
+        if arg-1 is not set:
+            send ""
+            send "&b&lWorldBorder Manager"
+            send ""
+            send "&f/wb set &7- 現在地を中心として登録"
+            send "&f/wb <数字> &7- 登録地点を中心にサイズ変更"
+            send "&f/wb info &7- 現在の設定を確認"
+            send "&f/wb reset &7- 登録地点を削除"
+            send ""
+            stop
+
+
+        # ----------------------------------------------------
+        # /wb set
+        # ----------------------------------------------------
+
+        if arg-1 is "set":
+
+            set {_world} to world of player
+            set {_worldName} to name of {_world}
+
+            set {wb.center.x.%{_worldName}%} to x-coordinate of player
+            set {wb.center.z.%{_worldName}%} to z-coordinate of player
+
+            send ""
+            send "{@prefix} &aワールドボーダー中心を登録しました。"
+            send ""
+            send "&7World: &f%{_worldName}%"
+            send "&7X: &f%{wb.center.x.%{_worldName}%}%"
+            send "&7Z: &f%{wb.center.z.%{_worldName}%}%"
+            send ""
+            stop
+
+
+        # ----------------------------------------------------
+        # /wb reset
+        # ----------------------------------------------------
+
+        if arg-1 is "reset":
+
+            set {_world} to world of player
+            set {_worldName} to name of {_world}
+
+            if {wb.center.x.%{_worldName}%} is not set:
+                send "{@prefix} &eこのワールドには登録地点がありません。"
+                stop
+
+            delete {wb.center.x.%{_worldName}%}
+            delete {wb.center.z.%{_worldName}%}
+
+            send "{@prefix} &a登録した中心座標を削除しました。"
+            send "&7World: &f%{_worldName}%"
+            send "&7※ワールドボーダー自体は変更していません。"
+            stop
+
+
+        # ----------------------------------------------------
+        # /wb info
+        # ----------------------------------------------------
+
+        if arg-1 is "info":
+
+            set {_world} to world of player
+            set {_worldName} to name of {_world}
+
+            send ""
+            send "&b&lWorldBorder Information"
+            send ""
+            send "&7World: &f%{_worldName}%"
+
+            if {wb.center.x.%{_worldName}%} is set:
+                send "&7登録中心 X: &f%{wb.center.x.%{_worldName}%}%"
+                send "&7登録中心 Z: &f%{wb.center.z.%{_worldName}%}%"
+            else:
+                send "&7登録中心: &c未登録"
+
+            send ""
+
+            set {_size} to world border size of {_world}
+            send "&7現在のサイズ: &f%{_size}%"
+
+            send ""
+            stop
+
+
+        # ----------------------------------------------------
+        # /wb <number>
+        # ----------------------------------------------------
+
+        if arg-1 parsed as number is not set:
+            send "{@prefix} &c使い方が正しくありません。"
+            send "&7/wb set"
+            send "&7/wb <数字>"
+            send "&7/wb info"
+            send "&7/wb reset"
+            stop
+
+
+        set {_size} to arg-1 parsed as number
+
+        if {_size} <= 0:
+            send "{@prefix} &cサイズは0より大きい数字を指定してください。"
+            stop
+
+
+        # ----------------------------------------------------
+        # 登録地点チェック
+        # ----------------------------------------------------
+
+        set {_world} to world of player
+        set {_worldName} to name of {_world}
+
+        if {wb.center.x.%{_worldName}%} is not set:
+            send ""
+            send "{@prefix} &cこのワールドには中心座標が登録されていません。"
+            send ""
+            send "&f先に &e/wb set &fを実行してください。"
+            send ""
+            stop
+
+
+        # ----------------------------------------------------
+        # CENTER
+        # ----------------------------------------------------
+
+        set {_x} to {wb.center.x.%{_worldName}%}
+        set {_z} to {wb.center.z.%{_worldName}%}
+
+        execute console command "worldborder center %{_x}% %{_z}%"
+
+
+        # ----------------------------------------------------
+        # SIZE
+        # ----------------------------------------------------
+
+        execute console command "worldborder set %{_size}%"
+
+
+        # ----------------------------------------------------
+        # RESULT
+        # ----------------------------------------------------
+
+        send ""
+        send "{@prefix} &aワールドボーダーを変更しました。"
+        send ""
+        send "&7World: &f%{_worldName}%"
+        send "&7Center X: &f%{_x}%"
+        send "&7Center Z: &f%{_z}%"
+        send "&7Size: &f%{_size}%"
+        send ""
+        send "&a✓ &f中心座標は登録されたままです。"
+        send ""
+
+
+# ============================================================
+# LOAD MESSAGE
+# ============================================================
+
+on load:
+    send "[WorldBorder Manager] v1.0.00 loaded." to console
