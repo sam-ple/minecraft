@@ -1,6 +1,6 @@
 # ============================================================
 # TETSUSEN BASE GENERATOR
-# Version : v0.0.02
+# Version : v0.1.00
 # Date: 2026-08-25
 #
 # Minecraft Java Edition + MineScript
