@@ -1,0 +1,601 @@
+# ============================================================
+# ADVANCEMENT TEST
+# Version : v0.4.00
+# Date    : 2026-08-30
+#
+# Minecraft Java Edition + Paper + Skript + SkBee
+#
+# ============================================================
+#
+# PURPOSE
+#
+#   Advancement Race本体を作る前の
+#   進捗取得・カテゴリ判定・ポイント加算テスト。
+#
+#
+# ============================================================
+# TARGET ADVANCEMENT CATEGORIES
+# ============================================================
+#
+#   minecraft:story/
+#   minecraft:nether/
+#   minecraft:end/
+#   minecraft:adventure/
+#   minecraft:husbandry/
+#
+#
+# ============================================================
+# IGNORE
+# ============================================================
+#
+#   minecraft:recipes/
+#   その他すべて
+#
+#
+# ============================================================
+# POINT
+# ============================================================
+#
+#   対象進捗を1つ達成
+#       ↓
+#   +1 POINT
+#
+#   Minecraftの通常の進捗は一度達成すると
+#   同じ進捗を再度達成できないため、
+#   同一進捗の重複カウント防止処理は不要。
+#
+#
+# ============================================================
+# DATA
+# ============================================================
+#
+#   {advtest.running}
+#       ゲーム実行状態
+#
+#   {advtest.debug}
+#       DEBUG MODE
+#
+#   {advtest.points::UUID}
+#       プレイヤーごとのポイント
+#
+#   {advtest.last_advancement::UUID}
+#       最後に取得した対象進捗
+#
+#
+# ============================================================
+# COMMANDS
+# ============================================================
+#
+#   /advtest start
+#       テスト開始
+#
+#   /advtest stop
+#       テスト停止
+#
+#   /advtest reset
+#       全データリセット
+#
+#   /advtest debug
+#       DEBUG ON / OFF
+#
+#   /advtest status
+#       状態表示
+#
+# ============================================================
+
+
+options:
+    prefix: &8[&bAdvTest&8]&r
+
+
+# ============================================================
+# COMMAND
+#
+# /advtest
+# /advtest start
+# /advtest stop
+# /advtest reset
+# /advtest debug
+# /advtest status
+# ============================================================
+
+command /advtest [<text>]:
+    permission: op
+    trigger:
+
+
+        # ====================================================
+        # START
+        # ====================================================
+
+        if arg-1 is "start":
+
+            set {advtest.running} to true
+
+
+            # ------------------------------------------------
+            # Scoreboard作成
+            # ------------------------------------------------
+
+            execute console command "scoreboard objectives remove advTestPoints"
+
+            execute console command "scoreboard objectives add advTestPoints dummy Points"
+
+            execute console command "scoreboard objectives setdisplay sidebar advTestPoints"
+
+
+            # ------------------------------------------------
+            # プレイヤー初期化
+            # ------------------------------------------------
+
+            loop all players:
+
+                set {_uuid} to uuid of loop-player
+
+                set {advtest.points::%{_uuid}%} to 0
+
+                delete {advtest.last_advancement::%{_uuid}%}
+
+                execute console command "scoreboard players set %loop-player% advTestPoints 0"
+
+
+            # ------------------------------------------------
+            # 開始メッセージ
+            # ------------------------------------------------
+
+            send "{@prefix} &aAdvancement Test START!" to all players
+
+            send "{@prefix} &7Target categories:" to all players
+
+            send "&7  minecraft:story/" to all players
+            send "&7  minecraft:nether/" to all players
+            send "&7  minecraft:end/" to all players
+            send "&7  minecraft:adventure/" to all players
+            send "&7  minecraft:husbandry/" to all players
+
+
+            # ------------------------------------------------
+            # DEBUG
+            # ------------------------------------------------
+
+            if {advtest.debug} is true:
+
+                send "{@prefix} &7[DEBUG] State: &aRUNNING" to console
+
+                send "{@prefix} &7[DEBUG] Players: &f%number of all players%" to console
+
+
+            stop
+
+
+        # ====================================================
+        # STOP
+        # ====================================================
+
+        if arg-1 is "stop":
+
+            set {advtest.running} to false
+
+            send "{@prefix} &cAdvancement Test STOPPED." to all players
+
+
+            if {advtest.debug} is true:
+
+                send "{@prefix} &7[DEBUG] State: &cSTOPPED" to console
+
+
+            stop
+
+
+        # ====================================================
+        # RESET
+        # ====================================================
+
+        if arg-1 is "reset":
+
+            set {advtest.running} to false
+
+            delete {advtest.points::*}
+
+            delete {advtest.last_advancement::*}
+
+
+            # ------------------------------------------------
+            # Scoreboard削除
+            # ------------------------------------------------
+
+            execute console command "scoreboard objectives remove advTestPoints"
+
+
+            # ------------------------------------------------
+            # メッセージ
+            # ------------------------------------------------
+
+            send "{@prefix} &eReset complete." to player
+
+
+            if {advtest.debug} is true:
+
+                send "{@prefix} &7[DEBUG] All variables cleared." to console
+
+
+            stop
+
+
+        # ====================================================
+        # DEBUG
+        # ====================================================
+
+        if arg-1 is "debug":
+
+            if {advtest.debug} is true:
+
+                set {advtest.debug} to false
+
+                send "{@prefix} &7DEBUG MODE: &cOFF" to player
+
+                log "[AdvTest DEBUG] DEBUG MODE OFF."
+
+
+            else:
+
+                set {advtest.debug} to true
+
+                send "{@prefix} &7DEBUG MODE: &aON" to player
+
+                log "[AdvTest DEBUG] DEBUG MODE ON."
+
+
+            stop
+
+
+        # ====================================================
+        # STATUS
+        # ====================================================
+
+        if arg-1 is "status":
+
+            send "&8&m--------------------------------" to player
+
+            send "&bADVANCEMENT TEST STATUS" to player
+
+            send "&8&m--------------------------------" to player
+
+
+            # ------------------------------------------------
+            # State
+            # ------------------------------------------------
+
+            if {advtest.running} is true:
+
+                send "&7State : &aRUNNING" to player
+
+            else:
+
+                send "&7State : &cSTOPPED" to player
+
+
+            # ------------------------------------------------
+            # Debug
+            # ------------------------------------------------
+
+            if {advtest.debug} is true:
+
+                send "&7Debug : &aON" to player
+
+            else:
+
+                send "&7Debug : &cOFF" to player
+
+
+            send "" to player
+
+
+            # ------------------------------------------------
+            # Player data
+            # ------------------------------------------------
+
+            loop all players:
+
+                set {_uuid} to uuid of loop-player
+
+
+                set {_points} to {advtest.points::%{_uuid}%}
+
+                if {_points} is not set:
+
+                    set {_points} to 0
+
+
+                set {_last} to {advtest.last_advancement::%{_uuid}%}
+
+                if {_last} is not set:
+
+                    set {_last} to "NONE"
+
+
+                send "&f%loop-player%" to player
+
+                send "  &7Points : &e%{_points}%" to player
+
+                send "  &7Last   : &f%{_last}%" to player
+
+
+            send "" to player
+
+            send "&7Target:" to player
+
+            send "&fstory / nether / end / adventure / husbandry" to player
+
+
+            send "&8&m--------------------------------" to player
+
+            stop
+
+
+        # ====================================================
+        # HELP
+        # ====================================================
+
+        send "&8&m--------------------------------" to player
+
+        send "&bADVANCEMENT TEST" to player
+
+        send ""
+
+        send "&f/advtest start &7- Start test"
+
+        send "&f/advtest stop &7- Stop test"
+
+        send "&f/advtest reset &7- Reset data"
+
+        send "&f/advtest debug &7- Debug ON/OFF"
+
+        send "&f/advtest status &7- Show status"
+
+        send ""
+
+        send "&7Target categories:"
+
+        send "&fstory / nether / end / adventure / husbandry"
+
+        send "&8&m--------------------------------" to player
+
+
+# ============================================================
+# SCRIPT LOAD
+# ============================================================
+
+on script load:
+
+    set {advtest.running} to false
+
+    set {advtest.debug} to false
+
+    delete {advtest.points::*}
+
+    delete {advtest.last_advancement::*}
+
+
+    # --------------------------------------------------------
+    # Scoreboard削除
+    # --------------------------------------------------------
+
+    execute console command "scoreboard objectives remove advTestPoints"
+
+
+    log "[AdvTest] Script loaded."
+
+
+# ============================================================
+# ADVANCEMENT EVENT
+#
+# SkBee required
+#
+# ============================================================
+
+on player advancement done:
+
+
+    # ========================================================
+    # RUNNING CHECK
+    # ========================================================
+
+    if {advtest.running} is not true:
+
+        stop
+
+
+    # ========================================================
+    # PLAYER
+    # ========================================================
+
+    set {_player} to event-player
+
+    set {_uuid} to uuid of {_player}
+
+
+    # ========================================================
+    # ADVANCEMENT ID
+    #
+    # event-advancementを文字列化する。
+    #
+    # Example:
+    #
+    #   minecraft:story/mine_diamond
+    #
+    # ========================================================
+
+    set {_advancement} to "%event-advancement%"
+
+
+    # ========================================================
+    # DEBUG
+    #
+    # イベントそのものが取得できたことを確認。
+    # ========================================================
+
+    if {advtest.debug} is true:
+
+        send "{@prefix} &8&m--------------------------------" to console
+
+        send "{@prefix} &b[DEBUG] ADVANCEMENT EVENT" to console
+
+        send "{@prefix} &7Player: &f%{_player}%" to console
+
+        send "{@prefix} &7UUID: &f%{_uuid}%" to console
+
+        send "{@prefix} &7Advancement: &e%{_advancement}%" to console
+
+
+    # ========================================================
+    # CATEGORY
+    # ========================================================
+
+    set {_valid} to false
+
+    set {_category} to "UNKNOWN"
+
+
+    # ========================================================
+    # STORY
+    # ========================================================
+
+    if {_advancement} starts with "minecraft:story/":
+
+        set {_valid} to true
+
+        set {_category} to "story"
+
+
+    # ========================================================
+    # NETHER
+    # ========================================================
+
+    else if {_advancement} starts with "minecraft:nether/":
+
+        set {_valid} to true
+
+        set {_category} to "nether"
+
+
+    # ========================================================
+    # END
+    # ========================================================
+
+    else if {_advancement} starts with "minecraft:end/":
+
+        set {_valid} to true
+
+        set {_category} to "end"
+
+
+    # ========================================================
+    # ADVENTURE
+    # ========================================================
+
+    else if {_advancement} starts with "minecraft:adventure/":
+
+        set {_valid} to true
+
+        set {_category} to "adventure"
+
+
+    # ========================================================
+    # HUSBANDRY
+    # ========================================================
+
+    else if {_advancement} starts with "minecraft:husbandry/":
+
+        set {_valid} to true
+
+        set {_category} to "husbandry"
+
+
+    # ========================================================
+    # CATEGORY DEBUG
+    # ========================================================
+
+    if {advtest.debug} is true:
+
+        send "{@prefix} &7Category: &e%{_category}%" to console
+
+        if {_valid} is true:
+
+            send "{@prefix} &7Valid: &aYES" to console
+
+        else:
+
+            send "{@prefix} &7Valid: &cNO" to console
+
+
+    # ========================================================
+    # INVALID
+    #
+    # recipes等はここで終了。
+    # ========================================================
+
+    if {_valid} is not true:
+
+        if {advtest.debug} is true:
+
+            send "{@prefix} &7Result: &8IGNORED" to console
+
+            send "{@prefix} &8&m--------------------------------" to console
+
+        stop
+
+
+    # ========================================================
+    # POINT
+    # ========================================================
+
+    add 1 to {advtest.points::%{_uuid}%}
+
+    set {_points} to {advtest.points::%{_uuid}%}
+
+
+    # ========================================================
+    # LAST ADVANCEMENT
+    # ========================================================
+
+    set {advtest.last_advancement::%{_uuid}%} to {_advancement}
+
+
+    # ========================================================
+    # SCOREBOARD
+    # ========================================================
+
+    execute console command "scoreboard players set %name of {_player}% advTestPoints %{_points}%"
+
+
+    # ========================================================
+    # PLAYER MESSAGE
+    # ========================================================
+
+    send "{@prefix} &aADVANCEMENT DETECTED!" to {_player}
+
+    send "{@prefix} &7Advancement: &e%{_advancement}%" to {_player}
+
+    send "{@prefix} &7Category: &b%{_category}%" to {_player}
+
+    send "{@prefix} &7Point: &a+1" to {_player}
+
+    send "{@prefix} &7Total: &e%{_points}%" to {_player}
+
+
+    # ========================================================
+    # DEBUG VALID
+    # ========================================================
+
+    if {advtest.debug} is true:
+
+        send "{@prefix} &aResult: VALID" to console
+
+        send "{@prefix} &7Category: &b%{_category}%" to console
+
+        send "{@prefix} &7Point: &a+1" to console
+
+        send "{@prefix} &7Total: &e%{_points}%" to console
+
+        send "{@prefix} &8&m--------------------------------" to console
