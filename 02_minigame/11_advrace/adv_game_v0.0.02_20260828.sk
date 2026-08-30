@@ -1,17 +1,25 @@
 # ============================================================
 # ADVANCEMENT TEST
-# Version : v0.2.00
+# Version : v0.3.00
 #
 # Minecraft Java Edition + Paper + Skript + SkBee
 #
 # PURPOSE
-#   ・Minecraftの進捗達成イベントを取得
-#   ・対象カテゴリのみポイント化
-#   ・プレイヤーごとに+1 POINT
-#   ・Scoreboard表示
-#   ・DEBUG表示
 #
-# TARGET ADVANCEMENT CATEGORIES
+#   進捗イベントが正しく取得できるかを確認する
+#   最小構成のミニテスト。
+#
+# TEST
+#
+#   1. /advtest start
+#   2. 対象進捗を取得
+#   3. Advancement IDを取得
+#   4. 対象カテゴリか判定
+#   5. 対象なら +1 POINT
+#   6. Scoreboardへ表示
+#   7. DEBUG ONならConsoleへ詳細表示
+#
+# TARGET
 #
 #   minecraft:story/
 #   minecraft:nether/
@@ -56,21 +64,12 @@ command /advtest [<text>]:
 
             set {advtest.running} to true
 
-            # -----------------------------------------------
-            # Scoreboard
-            # -----------------------------------------------
-
+            # Scoreboardを作り直す
             execute console command "scoreboard objectives remove advTestPoints"
-
             execute console command "scoreboard objectives add advTestPoints dummy Points"
-
             execute console command "scoreboard objectives setdisplay sidebar advTestPoints"
 
-
-            # -----------------------------------------------
-            # Player initialization
-            # -----------------------------------------------
-
+            # プレイヤーのポイントを0にする
             loop all players:
 
                 set {_uuid} to uuid of loop-player
@@ -79,19 +78,17 @@ command /advtest [<text>]:
 
                 execute console command "scoreboard players set %loop-player% advTestPoints 0"
 
-
-            # -----------------------------------------------
-            # Message
-            # -----------------------------------------------
-
+            # 開始メッセージ
             send "{@prefix} &aAdvancement Test START!" to all players
 
-            send "{@prefix} &7Target categories:" to all players
+            send "{@prefix} &7Target:" to all players
             send "&7  minecraft:story/" to all players
             send "&7  minecraft:nether/" to all players
             send "&7  minecraft:end/" to all players
             send "&7  minecraft:adventure/" to all players
             send "&7  minecraft:husbandry/" to all players
+
+            send "{@prefix} &7Try: &fDiamonds! &7or another normal advancement." to player
 
             stop
 
@@ -158,7 +155,6 @@ command /advtest [<text>]:
             send "&bADVANCEMENT TEST" to player
             send "&8&m--------------------------------" to player
 
-
             if {advtest.running} is true:
 
                 send "&7State: &aRUNNING" to player
@@ -177,12 +173,7 @@ command /advtest [<text>]:
                 send "&7Debug: &cOFF" to player
 
 
-            send "" to player
-
-
-            # ---------------------------------------------
-            # Player points
-            # ---------------------------------------------
+            send ""
 
             loop all players:
 
@@ -197,9 +188,9 @@ command /advtest [<text>]:
                 send "&f%loop-player% &7: &e%{_points}% point(s)" to player
 
 
-            send "" to player
+            send ""
             send "&7Target categories:" to player
-            send "&7story / nether / end / adventure / husbandry" to player
+            send "&7story / nether / end / adventure / husbandry"
 
             send "&8&m--------------------------------" to player
 
@@ -212,7 +203,7 @@ command /advtest [<text>]:
 
         send "&8&m--------------------------------" to player
         send "&bADVANCEMENT TEST" to player
-        send "" to player
+        send ""
         send "&f/advtest start &7- Start"
         send "&f/advtest stop &7- Stop"
         send "&f/advtest reset &7- Reset"
@@ -239,18 +230,14 @@ on script load:
 # ============================================================
 # ADVANCEMENT EVENT
 #
-# Requires SkBee
-#
-# Event:
-#   on player advancement done
+# SkBee required
 #
 # ============================================================
 
 on player advancement done:
 
-
     # ========================================================
-    # GAME CHECK
+    # RUNNING CHECK
     # ========================================================
 
     if {advtest.running} is not true:
@@ -263,69 +250,117 @@ on player advancement done:
     # ========================================================
 
     set {_player} to event-player
-
     set {_uuid} to uuid of {_player}
 
 
     # ========================================================
     # ADVANCEMENT
+    #
+    # ここではまず文字列として取得する。
     # ========================================================
 
-    set {_advancement} to event-advancement
+    set {_advancement} to "%event-advancement%"
+
+
+    # ========================================================
+    # DEBUG
+    #
+    # イベントが発生した時点で必ずConsoleへ出す。
+    # ========================================================
+
+    if {advtest.debug} is true:
+
+        send "{@prefix} &8&m--------------------------------" to console
+        send "{@prefix} &b[DEBUG] ADVANCEMENT EVENT" to console
+        send "{@prefix} &7Player: &f%{_player}%" to console
+        send "{@prefix} &7Advancement: &e%{_advancement}%" to console
 
 
     # ========================================================
     # CATEGORY CHECK
-    #
-    # Only these categories are valid:
-    #
-    #   minecraft:story/
-    #   minecraft:nether/
-    #   minecraft:end/
-    #   minecraft:adventure/
-    #   minecraft:husbandry/
-    #
     # ========================================================
 
     set {_valid} to false
+    set {_category} to "UNKNOWN"
 
+
+    # --------------------------------------------------------
+    # STORY
+    # --------------------------------------------------------
 
     if {_advancement} starts with "minecraft:story/":
 
         set {_valid} to true
+        set {_category} to "story"
 
+
+    # --------------------------------------------------------
+    # NETHER
+    # --------------------------------------------------------
 
     else if {_advancement} starts with "minecraft:nether/":
 
         set {_valid} to true
+        set {_category} to "nether"
 
+
+    # --------------------------------------------------------
+    # END
+    # --------------------------------------------------------
 
     else if {_advancement} starts with "minecraft:end/":
 
         set {_valid} to true
+        set {_category} to "end"
 
+
+    # --------------------------------------------------------
+    # ADVENTURE
+    # --------------------------------------------------------
 
     else if {_advancement} starts with "minecraft:adventure/":
 
         set {_valid} to true
+        set {_category} to "adventure"
 
+
+    # --------------------------------------------------------
+    # HUSBANDRY
+    # --------------------------------------------------------
 
     else if {_advancement} starts with "minecraft:husbandry/":
 
         set {_valid} to true
+        set {_category} to "husbandry"
 
 
     # ========================================================
-    # IGNORE INVALID ADVANCEMENT
+    # DEBUG CATEGORY RESULT
+    # ========================================================
+
+    if {advtest.debug} is true:
+
+        send "{@prefix} &7Category: &e%{_category}%" to console
+
+        if {_valid} is true:
+
+            send "{@prefix} &7Valid: &aYES" to console
+
+        else:
+
+            send "{@prefix} &7Valid: &cNO" to console
+
+
+    # ========================================================
+    # INVALID
     # ========================================================
 
     if {_valid} is not true:
 
         if {advtest.debug} is true:
 
-            send "{@prefix} &7[DEBUG] Ignored advancement:" to console
-            send "{@prefix} &7Player: &f%{_player}%" to console
-            send "{@prefix} &7Advancement: &8%{_advancement}%" to console
+            send "{@prefix} &7Result: &8IGNORED" to console
+            send "{@prefix} &8&m--------------------------------" to console
 
         stop
 
@@ -340,7 +375,7 @@ on player advancement done:
 
 
     # ========================================================
-    # LAST ADVANCEMENT
+    # SAVE LAST ADVANCEMENT
     # ========================================================
 
     set {advtest.last_advancement::%{_uuid}%} to {_advancement}
@@ -361,29 +396,20 @@ on player advancement done:
 
     send "{@prefix} &7Advancement: &e%{_advancement}%" to {_player}
 
+    send "{@prefix} &7Category: &b%{_category}%" to {_player}
+
     send "{@prefix} &7Point: &a+1" to {_player}
 
     send "{@prefix} &7Total: &e%{_points}%" to {_player}
 
 
     # ========================================================
-    # DEBUG
+    # DEBUG VALID
     # ========================================================
 
     if {advtest.debug} is true:
 
-        send "{@prefix} &8&m--------------------------------" to console
-
-        send "{@prefix} &7[DEBUG] Valid advancement detected!" to console
-
-        send "{@prefix} &7Player: &f%{_player}%" to console
-
-        send "{@prefix} &7UUID: &f%{_uuid}%" to console
-
-        send "{@prefix} &7Advancement: &e%{_advancement}%" to console
-
+        send "{@prefix} &aResult: VALID" to console
         send "{@prefix} &7Point: &a+1" to console
-
         send "{@prefix} &7Total: &e%{_points}%" to console
-
         send "{@prefix} &8&m--------------------------------" to console
