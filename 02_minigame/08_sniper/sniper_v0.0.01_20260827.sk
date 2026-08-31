@@ -1,14 +1,13 @@
 # ============================================================
 # SPYGLASS KILL TEST
-# Version : v0.1.00
+# Version : v0.1.03
 #
 # Minecraft Java Edition + Paper + Skript
 #
 # Features
-#   ・スパイグラスを持って左クリック
-#   ・クリックしたエンティティに100ダメージ
-#   ・全プレイヤーが使用可能
-#   ・簡単な演出
+#   ・スパイグラスを持ってMobを左クリック
+#   ・クリックしたMobを即死
+#   ・全プレイヤー使用可能
 #
 # ============================================================
 
@@ -18,16 +17,17 @@ options:
 
 
 # ============================================================
-# LEFT CLICK ENTITY
+# PLAYER ATTACK ENTITY
 # ============================================================
 
-on left click on entity:
+on damage of entity by player:
+
 
     # --------------------------------------------------------
-    # スパイグラスを持っているか
+    # スパイグラス確認
     # --------------------------------------------------------
 
-    if player's tool is not spyglass:
+    if attacker's tool is not spyglass:
         stop
 
 
@@ -35,27 +35,26 @@ on left click on entity:
     # 対象
     # --------------------------------------------------------
 
-    set {_target} to clicked entity
+    set {_target} to victim
 
 
     # --------------------------------------------------------
-    # 即死
+    # 通常ダメージをキャンセル
     # --------------------------------------------------------
 
-    damage {_target} by 100
-
-
-    # --------------------------------------------------------
-    # DEBUG / MESSAGE
-    # --------------------------------------------------------
-
-    send "{@prefix} &cTARGET HIT! &7%type of {_target}%" to player
+    cancel event
 
 
     # --------------------------------------------------------
-    # Effect
+    # Kill
     # --------------------------------------------------------
 
-    play sound "entity.player.attack.crit" with volume 1 and pitch 1 at {_target}
+    kill {_target}
 
-    spawn 30 of particle crit at location 1 block above {_target}
+
+    # --------------------------------------------------------
+    # メッセージ
+    # --------------------------------------------------------
+
+    send "{@prefix} &cTARGET KILLED!" to attacker
+    send "&7Target: %type of {_target}%" to attacker
