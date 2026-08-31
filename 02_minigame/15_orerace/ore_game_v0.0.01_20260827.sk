@@ -24,111 +24,68 @@ options:
     prefix: &8[&6OreRace&8]&r
 
 
-# ============================================================
-# START
-# ============================================================
-
-command /orerace start:
+command /orerace <text>:
     permission: op
     trigger:
 
-        set {orerace.running} to true
+        if arg-1 is "start":
+            set {orerace.running} to true
+            send "{@prefix} &aOreRace START!" to all players
 
-        send "{@prefix} &aOreRace START!" to all players
+        else if arg-1 is "stop":
+            set {orerace.running} to false
+            send "{@prefix} &cOreRace STOPPED." to all players
 
-        if {orerace.debug} is true:
-            send "{@prefix} &7[DEBUG] State: &aRUNNING" to player
+        else if arg-1 is "reset":
+            delete {orerace.points::*}
+            delete {orerace.count::*}
+            set {orerace.running} to false
 
+            execute console command "scoreboard objectives remove orePoints"
 
-# ============================================================
-# STOP
-# ============================================================
+            send "{@prefix} &eReset complete." to player
 
-command /orerace stop:
-    permission: op
-    trigger:
+        else if arg-1 is "status":
+            send "&8&m--------------------------------"
+            send "&6ORE RACE"
+            send "&8&m--------------------------------"
 
-        set {orerace.running} to false
+            if {orerace.running} is true:
+                send "&7State: &aRUNNING"
+            else:
+                send "&7State: &cSTOPPED"
 
-        send "{@prefix} &cOreRace STOPPED." to all players
+            loop all players:
+                set {_uuid} to uuid of loop-player
+                set {_points} to {orerace.points::%{_uuid}%}
 
+                if {_points} is not set:
+                    set {_points} to 0
 
-# ============================================================
-# RESET
-# ============================================================
+                set {_count} to {orerace.count::%{_uuid}%}
 
-command /orerace reset:
-    permission: op
-    trigger:
+                if {_count} is not set:
+                    set {_count} to 0
 
-        delete {orerace.points::*}
-        delete {orerace.count::*}
+                send "&f%loop-player% &7: &e%{_points}% pt &7(%{_count}% ores)"
 
-        set {orerace.running} to false
+            send "&8&m--------------------------------"
 
-        execute console command "scoreboard objectives remove orePoints"
-
-        send "{@prefix} &eReset complete." to player
-
-
-# ============================================================
-# STATUS
-# ============================================================
-
-command /orerace status:
-    permission: op
-    trigger:
-
-        send "&8&m--------------------------------"
-        send "&6ORE RACE"
-        send "&8&m--------------------------------"
-
-        if {orerace.running} is true:
-            send "&7State: &aRUNNING"
-        else:
-            send "&7State: &cSTOPPED"
-
-        send ""
-
-        loop all players:
-
-            set {_uuid} to uuid of loop-player
-
-            set {_points} to {orerace.points::%{_uuid}%}
-
-            if {_points} is not set:
-                set {_points} to 0
-
-            set {_count} to {orerace.count::%{_uuid}%}
-
-            if {_count} is not set:
-                set {_count} to 0
-
-            send "&f%loop-player% &7: &e%{_points}% pt &7(%{_count}% ores)"
-
-        send "&8&m--------------------------------"
-
-
-# ============================================================
-# DEBUG TOGGLE
-# ============================================================
-
-command /orerace debug:
-    permission: op
-    trigger:
-
-        if {orerace.debug} is true:
-
-            set {orerace.debug} to false
-
-            send "{@prefix} &7DEBUG: &cOFF"
+        else if arg-1 is "debug":
+            if {orerace.debug} is true:
+                set {orerace.debug} to false
+                send "{@prefix} &7DEBUG: &cOFF"
+            else:
+                set {orerace.debug} to true
+                send "{@prefix} &7DEBUG: &aON"
 
         else:
-
-            set {orerace.debug} to true
-
-            send "{@prefix} &7DEBUG: &aON"
-
+            send "{@prefix} &cUnknown command."
+            send "&7/orerace start"
+            send "&7/orerace stop"
+            send "&7/orerace reset"
+            send "&7/orerace status"
+            send "&7/orerace debug"
 
 # ============================================================
 # SCOREBOARD
