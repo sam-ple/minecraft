@@ -1,0 +1,227 @@
+# ============================================================
+# ADMIN SYSTEM
+# Version : v0.1.00
+#
+# Minecraft Java Edition + Paper + Skript
+#
+# Command:
+#   /admin
+#
+# Features:
+#   ・ミニゲームのON/OFF管理
+#   ・GUI操作
+#   ・OPのみ使用可能
+#
+# Managed Games:
+#   TETSUSEN
+#   LINERACE
+#   FARRACE
+#   ORERACE
+#   JINRO
+#
+# ============================================================
+
+
+# ============================================================
+# /admin
+# ============================================================
+
+command /admin:
+    permission: admin.menu
+    permission message: "§c管理者権限が必要です。"
+    trigger:
+
+        open chest inventory with 3 rows named "§8Admin Menu" to player
+
+        # ----------------------------------------------------
+        # TETSUSEN
+        # ----------------------------------------------------
+
+        if {game.tetsusen.enabled} is true:
+            set slot 10 of player's current inventory to lime concrete named "§a§lTETSUSEN" with lore "§7Status: §aON", "§7クリックでOFF"
+        else:
+            set slot 10 of player's current inventory to red concrete named "§c§lTETSUSEN" with lore "§7Status: §cOFF", "§7クリックでON"
+
+        # ----------------------------------------------------
+        # LINERACE
+        # ----------------------------------------------------
+
+        if {game.linerace.enabled} is true:
+            set slot 12 of player's current inventory to lime concrete named "§a§lLINERACE" with lore "§7Status: §aON", "§7クリックでOFF"
+        else:
+            set slot 12 of player's current inventory to red concrete named "§c§lLINERACE" with lore "§7Status: §cOFF", "§7クリックでON"
+
+        # ----------------------------------------------------
+        # FARRACE
+        # ----------------------------------------------------
+
+        if {game.farrace.enabled} is true:
+            set slot 14 of player's current inventory to lime concrete named "§a§lFARRACE" with lore "§7Status: §aON", "§7クリックでOFF"
+        else:
+            set slot 14 of player's current inventory to red concrete named "§c§lFARRACE" with lore "§7Status: §cOFF", "§7クリックでON"
+
+        # ----------------------------------------------------
+        # ORERACE
+        # ----------------------------------------------------
+
+        if {game.orerace.enabled} is true:
+            set slot 16 of player's current inventory to lime concrete named "§a§lORERACE" with lore "§7Status: §aON", "§7クリックでOFF"
+        else:
+            set slot 16 of player's current inventory to red concrete named "§c§lORERACE" with lore "§7Status: §cOFF", "§7クリックでON"
+
+        # ----------------------------------------------------
+        # JINRO
+        # ----------------------------------------------------
+
+        if {game.jinro.enabled} is true:
+            set slot 22 of player's current inventory to lime concrete named "§a§lJINRO" with lore "§7Status: §aON", "§7クリックでOFF"
+        else:
+            set slot 22 of player's current inventory to red concrete named "§c§lJINRO" with lore "§7Status: §cOFF", "§7クリックでON"
+
+
+# ============================================================
+# GUI Click
+# ============================================================
+
+on inventory click:
+
+    if name of event-inventory is not "§8Admin Menu":
+        stop
+
+    cancel event
+
+    # --------------------------------------------------------
+    # TETSUSEN
+    # --------------------------------------------------------
+
+    if clicked slot is 10:
+
+        if {game.tetsusen.enabled} is true:
+            set {game.tetsusen.enabled} to false
+            send "§cTETSUSEN §7→ §cOFF" to player
+        else:
+            set {game.tetsusen.enabled} to true
+            send "§aTETSUSEN §7→ §aON" to player
+
+        close player's inventory
+
+        wait 2 ticks
+        execute player command "/admin"
+
+        stop
+
+
+    # --------------------------------------------------------
+    # LINERACE
+    # --------------------------------------------------------
+
+    if clicked slot is 12:
+
+        if {game.linerace.enabled} is true:
+            set {game.linerace.enabled} to false
+            send "§cLINERACE §7→ §cOFF" to player
+        else:
+            set {game.linerace.enabled} to true
+            send "§aLINERACE §7→ §aON" to player
+
+        close player's inventory
+
+        wait 2 ticks
+        execute player command "/admin"
+
+        stop
+
+
+    # --------------------------------------------------------
+    # FARRACE
+    # --------------------------------------------------------
+
+    if clicked slot is 14:
+
+        if {game.farrace.enabled} is true:
+            set {game.farrace.enabled} to false
+            send "§cFARRACE §7→ §cOFF" to player
+        else:
+            set {game.farrace.enabled} to true
+            send "§aFARRACE §7→ §aON" to player
+
+        close player's inventory
+
+        wait 2 ticks
+        execute player command "/admin"
+
+        stop
+
+
+    # --------------------------------------------------------
+    # ORERACE
+    # --------------------------------------------------------
+
+    if clicked slot is 16:
+
+        if {game.orerace.enabled} is true:
+            set {game.orerace.enabled} to false
+            send "§cORERACE §7→ §cOFF" to player
+        else:
+            set {game.orerace.enabled} to true
+            send "§aORERACE §7→ §aON" to player
+
+        close player's inventory
+
+        wait 2 ticks
+        execute player command "/admin"
+
+        stop
+
+
+    # --------------------------------------------------------
+    # JINRO
+    # --------------------------------------------------------
+
+    if clicked slot is 22:
+
+        if {game.jinro.enabled} is true:
+            set {game.jinro.enabled} to false
+            send "§cJINRO §7→ §cOFF" to player
+        else:
+            set {game.jinro.enabled} to true
+            send "§aJINRO §7→ §aON" to player
+
+        close player's inventory
+
+        wait 2 ticks
+        execute player command "/admin"
+
+        stop
+
+
+# ============================================================
+# Prevent Drag
+# ============================================================
+
+on inventory drag:
+
+    if name of event-inventory is "§8Admin Menu":
+        cancel event
+
+
+# ============================================================
+# Default Settings
+# ============================================================
+
+on load:
+
+    if {game.tetsusen.enabled} is not set:
+        set {game.tetsusen.enabled} to true
+
+    if {game.linerace.enabled} is not set:
+        set {game.linerace.enabled} to true
+
+    if {game.farrace.enabled} is not set:
+        set {game.farrace.enabled} to true
+
+    if {game.orerace.enabled} is not set:
+        set {game.orerace.enabled} to true
+
+    if {game.jinro.enabled} is not set:
+        set {game.jinro.enabled} to true
