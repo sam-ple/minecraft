@@ -1,0 +1,716 @@
+# ============================================================
+# FARRACE
+# Distance Race System
+# Version : v0.2.00
+#
+# ============================================================
+#
+# FEATURES
+#
+#   ・Start地点を保存
+#   ・Start地点に5x5の受付床を生成
+#   ・set2で受付床の上にいるプレイヤーを参加者として登録
+#   ・set2実行時、以前の参加者は完全にリセット
+#   ・5 / 15 / 30 / 45 / 60分の制限時間
+#   ・参加者のみXZ距離を計測
+#   ・時間切れで自動STOP
+#   ・Statusで参加者・時間・状態を確認
+#   ・Debug Mode
+#
+#
+# COMMAND
+#
+#   /farrace set
+#   /farrace set2
+#   /farrace time <5|15|30|45|60>
+#   /farrace start
+#   /farrace stop
+#   /farrace status
+#   /farrace debug
+#   /farrace reset
+#
+# ============================================================
+
+
+options:
+    prefix: &8[&bFarRace&8]&r
+    floor-block: white concrete
+
+
+# ============================================================
+# COMMAND
+# ============================================================
+
+command /farrace [<text>] [<number>]:
+    permission: op
+    trigger:
+
+
+        # ====================================================
+        # SET
+        #
+        # 現在位置をスタート地点として保存
+        # 5x5の受付床を生成
+        # ====================================================
+
+        if arg-1 is "set":
+
+            if {farrace.running} is true:
+
+                send "{@prefix} &cFarRace is currently running." to player
+                stop
+
+
+            # ------------------------------------------------
+            # Start Position
+            # ------------------------------------------------
+
+            set {farrace.start.x} to x-coordinate of player
+            set {farrace.start.y} to y-coordinate of player
+            set {farrace.start.z} to z-coordinate of player
+
+            set {farrace.start.world} to world of player
+
+
+            # ------------------------------------------------
+            # 5x5受付床
+            #
+            # プレイヤーの足元を中心に5x5
+            # Yは現在位置のブロック位置
+            # ------------------------------------------------
+
+            set {_centerX} to floor(x-coordinate of player)
+            set {_centerY} to floor(y-coordinate of player) - 1
+            set {_centerZ} to floor(z-coordinate of player)
+
+            loop integers from -2 to 2:
+
+                set {_dx} to loop-number
+
+                loop integers from -2 to 2:
+
+                    set {_dz} to loop-number
+
+                    set {_block} to block at location({_centerX} + {_dx}, {_centerY}, {_centerZ} + {_dz}, world of player)
+
+                    set {_block} to {@floor-block}
+
+
+            # ------------------------------------------------
+            # 以前の参加者をリセット
+            # ------------------------------------------------
+
+            delete {farrace.players::*}
+
+            set {farrace.player.count} to 0
+
+
+            send "{@prefix} &aStart position set!" to player
+            send "{@prefix} &7Start X: &f%{farrace.start.x}%" to player
+            send "{@prefix} &7Start Y: &f%{farrace.start.y}%" to player
+            send "{@prefix} &7Start Z: &f%{farrace.start.z}%" to player
+            send "{@prefix} &7受付エリア: &f5x5" to player
+
+            stop
+
+
+        # ====================================================
+        # SET2
+        #
+        # 現在受付床の上にいるプレイヤーを参加者として登録
+        #
+        # 以前の参加者は完全にリセット
+        # ====================================================
+
+        if arg-1 is "set2":
+
+            if {farrace.start.x} is not set:
+
+                send "{@prefix} &cStart position is not set." to player
+                stop
+
+
+            if {farrace.running} is true:
+
+                send "{@prefix} &cFarRace is currently running." to player
+                stop
+
+
+            # ------------------------------------------------
+            # 以前の参加者を完全リセット
+            # ------------------------------------------------
+
+            delete {farrace.players::*}
+
+            set {farrace.player.count} to 0
+
+
+            # ------------------------------------------------
+            # Start地点と同じワールドにいるプレイヤーを確認
+            # ------------------------------------------------
+
+            loop all players:
+
+                if world of loop-player is {farrace.start.world}:
+
+                    # ----------------------------------------
+                    # プレイヤー位置
+                    # ----------------------------------------
+
+                    set {_px} to floor(x-coordinate of loop-player)
+                    set {_py} to floor(y-coordinate of loop-player) - 1
+                    set {_pz} to floor(z-coordinate of loop-player)
+
+
+                    # ----------------------------------------
+                    # 5x5範囲
+                    # ----------------------------------------
+
+                    set {_dx} to {_px} - floor({farrace.start.x})
+                    set {_dz} to {_pz} - floor({farrace.start.z})
+
+
+                    if {_dx} is between -2 and 2:
+
+                        if {_dz} is between -2 and 2:
+
+                            # --------------------------------
+                            # 参加者登録
+                            # --------------------------------
+
+                            add uuid of loop-player to {farrace.players::*}
+
+                            add 1 to {farrace.player.count}
+
+                            send "{@prefix} &a参加者登録: &f%loop-player%" to player
+
+
+            # ------------------------------------------------
+            # 結果
+            # ------------------------------------------------
+
+            send "" to player
+            send "{@prefix} &b参加者を確定しました。" to player
+            send "{@prefix} &7参加者: &f%{farrace.player.count}%人" to player
+
+            if {farrace.player.count} is 0:
+
+                send "{@prefix} &c受付床の上にプレイヤーがいません。" to player
+
+            else:
+
+                loop {farrace.players::*}:
+
+                    set {_uuid} to loop-value
+                    set {_p} to player from uuid {_uuid}
+
+                    if {_p} is set:
+
+                        send "&7- &f%{_p}%" to player
+
+            send "" to player
+
+            stop
+
+
+        # ====================================================
+        # TIME
+        #
+        # 5 / 15 / 30 / 45 / 60分
+        # ====================================================
+
+        if arg-1 is "time":
+
+            if {farrace.running} is true:
+
+                send "{@prefix} &cFarRace is currently running." to player
+                stop
+
+
+            if arg-2 is not set:
+
+                send "{@prefix} &7使用可能な時間: &f5 / 15 / 30 / 45 / 60 分" to player
+                stop
+
+
+            if arg-2 is 5:
+
+                set {farrace.time.limit} to 300
+                set {_minutes} to 5
+
+            else if arg-2 is 15:
+
+                set {farrace.time.limit} to 900
+                set {_minutes} to 15
+
+            else if arg-2 is 30:
+
+                set {farrace.time.limit} to 1800
+                set {_minutes} to 30
+
+            else if arg-2 is 45:
+
+                set {farrace.time.limit} to 2700
+                set {_minutes} to 45
+
+            else if arg-2 is 60:
+
+                set {farrace.time.limit} to 3600
+                set {_minutes} to 60
+
+            else:
+
+                send "{@prefix} &c時間は 5 / 15 / 30 / 45 / 60 のみ指定できます。" to player
+                stop
+
+
+            send "{@prefix} &a制限時間を &f%{_minutes}%分 &aに設定しました。" to player
+
+            stop
+
+
+        # ====================================================
+        # START
+        # ====================================================
+
+        if arg-1 is "start":
+
+            # ------------------------------------------------
+            # Start地点確認
+            # ------------------------------------------------
+
+            if {farrace.start.x} is not set:
+
+                send "{@prefix} &cStart position is not set." to player
+                stop
+
+
+            # ------------------------------------------------
+            # 参加者確認
+            # ------------------------------------------------
+
+            if {farrace.player.count} is not set:
+
+                send "{@prefix} &c参加者が登録されていません。" to player
+                stop
+
+
+            if {farrace.player.count} is 0:
+
+                send "{@prefix} &c参加者が登録されていません。" to player
+                stop
+
+
+            # ------------------------------------------------
+            # 時間設定確認
+            # ------------------------------------------------
+
+            if {farrace.time.limit} is not set:
+
+                send "{@prefix} &c制限時間が設定されていません。" to player
+                send "{@prefix} &7/farrace time 5" to player
+                stop
+
+
+            # ------------------------------------------------
+            # Running
+            # ------------------------------------------------
+
+            set {farrace.running} to true
+
+            set {farrace.elapsed} to 0
+
+
+            # ------------------------------------------------
+            # Scoreboard
+            # ------------------------------------------------
+
+            execute console command "scoreboard objectives remove farDistance"
+
+            execute console command "scoreboard objectives add farDistance dummy Distance"
+
+            execute console command "scoreboard objectives setdisplay sidebar farDistance"
+
+
+            # ------------------------------------------------
+            # 参加者初期化
+            # ------------------------------------------------
+
+            loop {farrace.players::*}:
+
+                set {_uuid} to loop-value
+
+                set {farrace.distance::%{_uuid}%} to 0
+
+                set {_p} to player from uuid {_uuid}
+
+                if {_p} is set:
+
+                    execute console command "scoreboard players set %name of {_p}% farDistance 0"
+
+
+            # ------------------------------------------------
+            # Start
+            # ------------------------------------------------
+
+            send "" to all players
+            send "{@prefix} &a&lFarRace START!" to all players
+
+            set {_minutes} to {farrace.time.limit} / 60
+
+            send "{@prefix} &7制限時間: &f%{_minutes}%分" to all players
+            send "{@prefix} &7参加者: &f%{farrace.player.count}%人" to all players
+            send "" to all players
+
+            stop
+
+
+        # ====================================================
+        # STOP
+        # ====================================================
+
+        if arg-1 is "stop":
+
+            if {farrace.running} is not true:
+
+                send "{@prefix} &cFarRace is not running." to player
+                stop
+
+
+            set {farrace.running} to false
+
+            send "{@prefix} &c&lFarRace STOPPED." to all players
+
+            stop
+
+
+        # ====================================================
+        # STATUS
+        # ====================================================
+
+        if arg-1 is "status":
+
+            send "&8&m--------------------------------" to player
+            send "&b&lFarRace STATUS" to player
+            send "" to player
+
+
+            # ------------------------------------------------
+            # State
+            # ------------------------------------------------
+
+            if {farrace.running} is true:
+
+                send "&7State: &aRUNNING"
+
+            else:
+
+                send "&7State: &cSTOPPED"
+
+
+            # ------------------------------------------------
+            # Start
+            # ------------------------------------------------
+
+            if {farrace.start.x} is set:
+
+                send "&7Start X: &f%{farrace.start.x}%"
+                send "&7Start Y: &f%{farrace.start.y}%"
+                send "&7Start Z: &f%{farrace.start.z}%"
+
+            else:
+
+                send "&7Start: &cNOT SET"
+
+
+            # ------------------------------------------------
+            # Time
+            # ------------------------------------------------
+
+            if {farrace.time.limit} is set:
+
+                set {_limitMinutes} to {farrace.time.limit} / 60
+
+                send "&7Time Limit: &f%{_limitMinutes}% minutes"
+
+            else:
+
+                send "&7Time Limit: &cNOT SET"
+
+
+            if {farrace.running} is true:
+
+                set {_remaining} to {farrace.time.limit} - {farrace.elapsed}
+
+                if {_remaining} < 0:
+
+                    set {_remaining} to 0
+
+                set {_remainMin} to floor({_remaining} / 60)
+                set {_remainSec} to {_remaining} - ({_remainMin} * 60)
+
+                if {_remainSec} < 10:
+
+                    send "&7Remaining: &f%{_remainMin}%:0%{_remainSec}%"
+
+                else:
+
+                    send "&7Remaining: &f%{_remainMin}%:%{_remainSec}%"
+
+
+            # ------------------------------------------------
+            # Players
+            # ------------------------------------------------
+
+            send "" to player
+            send "&7Players: &f%{farrace.player.count}%"
+
+            if {farrace.player.count} is greater than 0:
+
+                loop {farrace.players::*}:
+
+                    set {_uuid} to loop-value
+                    set {_p} to player from uuid {_uuid}
+
+                    if {_p} is set:
+
+                        send "&7- &f%{_p}%"
+
+            send "&8&m--------------------------------" to player
+
+            stop
+
+
+        # ====================================================
+        # DEBUG
+        # ====================================================
+
+        if arg-1 is "debug":
+
+            if {farrace.debug} is true:
+
+                set {farrace.debug} to false
+
+                send "{@prefix} &7DEBUG: &cOFF" to player
+
+            else:
+
+                set {farrace.debug} to true
+
+                send "{@prefix} &7DEBUG: &aON" to player
+
+            stop
+
+
+        # ====================================================
+        # RESET
+        # ====================================================
+
+        if arg-1 is "reset":
+
+            set {farrace.running} to false
+            set {farrace.debug} to false
+
+            delete {farrace.start.x}
+            delete {farrace.start.y}
+            delete {farrace.start.z}
+            delete {farrace.start.world}
+
+            delete {farrace.players::*}
+            delete {farrace.distance::*}
+
+            delete {farrace.player.count}
+
+            delete {farrace.time.limit}
+            delete {farrace.elapsed}
+
+            execute console command "scoreboard objectives remove farDistance"
+
+            send "{@prefix} &eFarRace RESET." to player
+
+            stop
+
+
+        # ====================================================
+        # HELP
+        # ====================================================
+
+        send "&8&m--------------------------------" to player
+        send "&b&lFarRace" to player
+        send ""
+        send "&f/farrace set &7- Set start + create 5x5 area"
+        send "&f/farrace set2 &7- Register players on area"
+        send "&f/farrace time <5|15|30|45|60>"
+        send "&f/farrace start &7- Start"
+        send "&f/farrace stop &7- Stop"
+        send "&f/farrace status &7- Show status"
+        send "&f/farrace debug &7- Toggle debug"
+        send "&f/farrace reset &7- Reset"
+        send "&8&m--------------------------------"
+
+
+# ============================================================
+# DISTANCE CALCULATION
+#
+# 1秒ごと
+#
+# 参加者だけを計測
+# ============================================================
+
+every 1 second:
+
+    if {farrace.running} is not true:
+
+        stop
+
+
+    if {farrace.start.x} is not set:
+
+        stop
+
+
+    # --------------------------------------------------------
+    # 経過時間
+    # --------------------------------------------------------
+
+    add 1 to {farrace.elapsed}
+
+
+    # --------------------------------------------------------
+    # Time Up
+    # --------------------------------------------------------
+
+    if {farrace.elapsed} >= {farrace.time.limit}:
+
+        set {farrace.running} to false
+
+        send "" to all players
+        send "{@prefix} &e&lTIME UP!" to all players
+        send "{@prefix} &7FarRace has ended." to all players
+        send "" to all players
+
+        stop
+
+
+    # --------------------------------------------------------
+    # Participants
+    # --------------------------------------------------------
+
+    loop {farrace.players::*}:
+
+        set {_uuid} to loop-value
+        set {_p} to player from uuid {_uuid}
+
+
+        if {_p} is set:
+
+            # ------------------------------------------------
+            # Current position
+            # ------------------------------------------------
+
+            set {_x} to x-coordinate of {_p}
+            set {_z} to z-coordinate of {_p}
+
+
+            # ------------------------------------------------
+            # Difference
+            # ------------------------------------------------
+
+            set {_dx} to {_x} - {farrace.start.x}
+            set {_dz} to {_z} - {farrace.start.z}
+
+
+            # ------------------------------------------------
+            # Distance
+            #
+            # Yは使用しない
+            # ------------------------------------------------
+
+            set {_distance} to sqrt(({_dx} * {_dx}) + ({_dz} * {_dz}))
+
+
+            # ------------------------------------------------
+            # Integer
+            # ------------------------------------------------
+
+            set {_score} to floor({_distance})
+
+
+            # ------------------------------------------------
+            # Save
+            # ------------------------------------------------
+
+            set {farrace.distance::%{_uuid}%} to {_score}
+
+
+            # ------------------------------------------------
+            # Scoreboard
+            # ------------------------------------------------
+
+            execute console command "scoreboard players set %name of {_p}% farDistance %{_score}%"
+
+
+# ============================================================
+# DEBUG
+#
+# 5秒ごと
+# ============================================================
+
+every 5 seconds:
+
+    if {farrace.debug} is not true:
+
+        stop
+
+
+    if {farrace.running} is not true:
+
+        stop
+
+
+    if {farrace.start.x} is not set:
+
+        stop
+
+
+    send "&8&m--------------------------------" to all players
+    send "&b[FarRace DEBUG]" to all players
+
+    send "&7Start X: &f%{farrace.start.x}%" to all players
+    send "&7Start Z: &f%{farrace.start.z}%" to all players
+
+    send "" to all players
+
+
+    # --------------------------------------------------------
+    # Participants
+    # --------------------------------------------------------
+
+    loop {farrace.players::*}:
+
+        set {_uuid} to loop-value
+        set {_p} to player from uuid {_uuid}
+
+        if {_p} is set:
+
+            set {_x} to x-coordinate of {_p}
+            set {_y} to y-coordinate of {_p}
+            set {_z} to z-coordinate of {_p}
+
+            set {_dx} to {_x} - {farrace.start.x}
+            set {_dz} to {_z} - {farrace.start.z}
+
+            set {_distance} to sqrt(({_dx} * {_dx}) + ({_dz} * {_dz}))
+
+            set {_score} to floor({_distance})
+
+
+            send "&fPlayer: &e%{_p}%" to all players
+            send "&7Current: X=&f%{_x}% &7Y=&f%{_y}% &7Z=&f%{_z}%" to all players
+            send "&7DX: &f%{_dx}% &7DZ: &f%{_dz}%" to all players
+            send "&7Distance: &a%{_distance}%" to all players
+            send "&7Score: &e%{_score}%" to all players
+            send "" to all players
+
+
+    send "&8&m--------------------------------" to all players

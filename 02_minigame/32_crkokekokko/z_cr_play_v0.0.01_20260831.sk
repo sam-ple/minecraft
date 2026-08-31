@@ -1,0 +1,450 @@
+# ============================================================
+# CR GAME SYSTEM
+# Version : v0.1.00
+#
+# Minecraft Java Edition
+# Paper
+# Skript 2.16.1
+#
+# ============================================================
+#
+# 【役割】
+#
+# MineScript
+#   → ステージ生成
+#
+# Skript
+#   → ゲーム稼働
+#
+# ============================================================
+#
+# COMMAND
+#
+#   /cr start
+#       ゲーム開始
+#
+#   /cr stop
+#       ゲーム停止
+#
+#   /cr reset
+#       ゲーム停止＋Marker削除
+#
+# ============================================================
+#
+# GAME
+#
+#   ・Trapdoorランダム開閉
+#   ・Sea Lanternランダム点灯／消灯
+#   ・Chicken発光
+#   ・Chickenの色判定
+#   ・Diamond BlockでEgg発射
+#
+# ============================================================
+
+
+# ============================================================
+# CONFIG
+# ============================================================
+
+options:
+
+    # Trapdoor更新間隔
+    trapdoor_min: 12 ticks
+    trapdoor_max: 16 ticks
+
+    # Bブロック更新間隔
+    b_interval: 10 ticks
+
+    # メインゲームループ
+    game_interval: 2 ticks
+
+
+# ============================================================
+# START
+# ============================================================
+
+command /cr [<text>]:
+
+    trigger:
+
+        # ====================================================
+        # START
+        # ====================================================
+
+        if arg-1 is "start":
+
+            if {cr.running} is true:
+
+                send "&c[CR] Already running."
+
+                stop
+
+            # ------------------------------------------------
+            # Marker確認
+            # ------------------------------------------------
+
+            if size of all entities where [type of input is marker and input has tag "cr_trapdoor"] is 0:
+
+                send "&c[CR] Stage is not set."
+
+                send "&7Run MineScript: &fcr.py set"
+
+                stop
+
+            # ------------------------------------------------
+            # 稼働フラグ
+            # ------------------------------------------------
+
+            set {cr.running} to true
+
+            # ------------------------------------------------
+            # 開始演出
+            # ------------------------------------------------
+
+            execute console command "title @a title {\"text\":\"START\",\"color\":\"gold\",\"bold\":true}"
+
+            execute console command "playsound minecraft:block.note_block.pling master @a ~ ~ ~ 1 1"
+
+            send "&a[CR] Started."
+
+            # ------------------------------------------------
+            # Trapdoor Loop
+            # ------------------------------------------------
+
+            while {cr.running} is true:
+
+                loop all entities where [type of input is marker and input has tag "cr_trapdoor"]:
+
+                    # ----------------------------------------
+                    # ランダム
+                    # ----------------------------------------
+
+                    if random integer between 1 and 2 is 1:
+
+                        # ------------------------------------
+                        # OPEN
+                        # ------------------------------------
+
+                        execute console command "execute positioned at %s run setblock ~ ~ ~ minecraft:pale_oak_trapdoor[facing=south,half=top,open=true]" with loop-entity
+
+                    else:
+
+                        # ------------------------------------
+                        # CLOSE
+                        # ------------------------------------
+
+                        execute console command "execute positioned at %s run setblock ~ ~ ~ minecraft:pale_oak_trapdoor[facing=south,half=top,open=false]" with loop-entity
+
+                # --------------------------------------------
+                # 0.6～0.8秒
+                # --------------------------------------------
+
+                wait random integer between {@trapdoor_min} and {@trapdoor_max} ticks
+
+            stop
+
+
+        # ====================================================
+        # STOP
+        # ====================================================
+
+        if arg-1 is "stop":
+
+            if {cr.running} is not true:
+
+                send "&e[CR] Not running."
+
+                stop
+
+            set {cr.running} to false
+
+            execute console command "title @a title {\"text\":\"STOP\",\"color\":\"red\",\"bold\":true}"
+
+            send "&c[CR] Stopped."
+
+            stop
+
+
+        # ====================================================
+        # RESET
+        # ====================================================
+
+        if arg-1 is "reset":
+
+            # ------------------------------------------------
+            # 稼働停止
+            # ------------------------------------------------
+
+            set {cr.running} to false
+
+            # ------------------------------------------------
+            # Marker削除
+            # ------------------------------------------------
+
+            execute console command "kill @e[type=marker,tag=cr_trapdoor]"
+
+            execute console command "kill @e[type=marker,tag=cr_b]"
+
+            # ------------------------------------------------
+            # Chickenの一時タグ削除
+            # ------------------------------------------------
+
+            execute console command "tag @e[type=chicken] remove cr_done"
+
+            execute console command "tag @e[type=chicken] remove cr_shown"
+
+            execute console command "tag @e[type=chicken] remove cr_on"
+
+            execute console command "tag @e[type=chicken] remove cr_was_on"
+
+            send "&e[CR] Reset complete."
+
+            stop
+
+
+        # ====================================================
+        # STATUS
+        # ====================================================
+
+        if arg-1 is "status":
+
+            if {cr.running} is true:
+
+                send "&a[CR] RUNNING"
+
+            else:
+
+                send "&c[CR] STOPPED"
+
+            stop
+
+
+        # ====================================================
+        # HELP
+        # ====================================================
+
+        send "&6========== CR =========="
+
+        send "&e/cr start &7- Start"
+
+        send "&e/cr stop &7- Stop"
+
+        send "&e/cr reset &7- Reset"
+
+        send "&e/cr status &7- Status"
+
+        send "&6========================"
+
+
+# ============================================================
+# GAME LOOP
+# ============================================================
+
+every {@game_interval}:
+
+    # ========================================================
+    # 稼働していなければ何もしない
+    # ========================================================
+
+    if {cr.running} is not true:
+
+        stop
+
+
+    # ========================================================
+    # Chicken発光
+    # ========================================================
+
+    execute console command "execute as @e[type=chicken] run effect give @s glowing 1 0 true"
+
+
+    # ========================================================
+    # Chicken → Concrete判定
+    # ========================================================
+
+    # --------------------------------------------------------
+    # RED
+    # --------------------------------------------------------
+
+    execute console command "execute as @e[type=chicken,tag=!cr_done] at @s if block ~ ~-1 ~ minecraft:red_concrete run tag @s add cr_done"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] at @s run title @a title {\"text\":\"RED\",\"color\":\"red\",\"bold\":true}"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] at @s run playsound minecraft:entity.firework_rocket.launch master @a ~ ~ ~ 1 1"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] at @s run summon firework_rocket ~ ~1 ~ {LifeTime:20}"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] run tag @s add cr_shown"
+
+
+    # --------------------------------------------------------
+    # ORANGE
+    # --------------------------------------------------------
+
+    execute console command "execute as @e[type=chicken,tag=!cr_done] at @s if block ~ ~-1 ~ minecraft:orange_concrete run tag @s add cr_done"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] at @s run title @a title {\"text\":\"ORANGE\",\"color\":\"gold\",\"bold\":true}"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] at @s run playsound minecraft:entity.firework_rocket.launch master @a ~ ~ ~ 1 1"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] run tag @s add cr_shown"
+
+
+    # --------------------------------------------------------
+    # YELLOW
+    # --------------------------------------------------------
+
+    execute console command "execute as @e[type=chicken,tag=!cr_done] at @s if block ~ ~-1 ~ minecraft:yellow_concrete run tag @s add cr_done"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] at @s run title @a title {\"text\":\"YELLOW\",\"color\":\"yellow\",\"bold\":true}"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] run tag @s add cr_shown"
+
+
+    # --------------------------------------------------------
+    # LIME
+    # --------------------------------------------------------
+
+    execute console command "execute as @e[type=chicken,tag=!cr_done] at @s if block ~ ~-1 ~ minecraft:lime_concrete run tag @s add cr_done"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] at @s run title @a title {\"text\":\"LIME\",\"color\":\"green\",\"bold\":true}"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] run tag @s add cr_shown"
+
+
+    # --------------------------------------------------------
+    # GREEN
+    # --------------------------------------------------------
+
+    execute console command "execute as @e[type=chicken,tag=!cr_done] at @s if block ~ ~-1 ~ minecraft:green_concrete run tag @s add cr_done"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] at @s run title @a title {\"text\":\"GREEN\",\"color\":\"dark_green\",\"bold\":true}"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] run tag @s add cr_shown"
+
+
+    # --------------------------------------------------------
+    # CYAN
+    # --------------------------------------------------------
+
+    execute console command "execute as @e[type=chicken,tag=!cr_done] at @s if block ~ ~-1 ~ minecraft:cyan_concrete run tag @s add cr_done"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] at @s run title @a title {\"text\":\"CYAN\",\"color\":\"aqua\",\"bold\":true}"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] run tag @s add cr_shown"
+
+
+    # --------------------------------------------------------
+    # LIGHT BLUE
+    # --------------------------------------------------------
+
+    execute console command "execute as @e[type=chicken,tag=!cr_done] at @s if block ~ ~-1 ~ minecraft:light_blue_concrete run tag @s add cr_done"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] at @s run title @a title {\"text\":\"LIGHT BLUE\",\"color\":\"blue\",\"bold\":true}"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] run tag @s add cr_shown"
+
+
+    # --------------------------------------------------------
+    # BLUE
+    # --------------------------------------------------------
+
+    execute console command "execute as @e[type=chicken,tag=!cr_done] at @s if block ~ ~-1 ~ minecraft:blue_concrete run tag @s add cr_done"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] at @s run title @a title {\"text\":\"BLUE\",\"color\":\"dark_blue\",\"bold\":true}"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] run tag @s add cr_shown"
+
+
+    # --------------------------------------------------------
+    # PURPLE
+    # --------------------------------------------------------
+
+    execute console command "execute as @e[type=chicken,tag=!cr_done] at @s if block ~ ~-1 ~ minecraft:purple_concrete run tag @s add cr_done"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] at @s run title @a title {\"text\":\"PURPLE\",\"color\":\"dark_purple\",\"bold\":true}"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] run tag @s add cr_shown"
+
+
+    # --------------------------------------------------------
+    # MAGENTA
+    # --------------------------------------------------------
+
+    execute console command "execute as @e[type=chicken,tag=!cr_done] at @s if block ~ ~-1 ~ minecraft:magenta_concrete run tag @s add cr_done"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] at @s run title @a title {\"text\":\"MAGENTA\",\"color\":\"light_purple\",\"bold\":true}"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] run tag @s add cr_shown"
+
+
+    # --------------------------------------------------------
+    # PINK
+    # --------------------------------------------------------
+
+    execute console command "execute as @e[type=chicken,tag=!cr_done] at @s if block ~ ~-1 ~ minecraft:pink_concrete run tag @s add cr_done"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] at @s run title @a title {\"text\":\"PINK\",\"color\":\"light_purple\",\"bold\":true}"
+
+    execute console command "execute as @e[type=chicken,tag=cr_done,tag=!cr_shown] run tag @s add cr_shown"
+
+
+    # ========================================================
+    # DIAMOND BLOCK
+    # ========================================================
+
+    # --------------------------------------------------------
+    # 現在踏んでいる
+    # --------------------------------------------------------
+
+    execute console command "execute as @e[type=chicken] at @s if block ~ ~-1 ~ minecraft:diamond_block run tag @s add cr_on"
+
+    # --------------------------------------------------------
+    # 離れた
+    # --------------------------------------------------------
+
+    execute console command "execute as @e[type=chicken] at @s unless block ~ ~-1 ~ minecraft:diamond_block run tag @s remove cr_on"
+
+    # --------------------------------------------------------
+    # 踏んだ瞬間
+    # --------------------------------------------------------
+
+    execute console command "execute as @e[type=chicken,tag=cr_on,tag=!cr_was_on] at @s run summon egg ~ ~2 ~"
+
+    # --------------------------------------------------------
+    # 状態保存
+    # --------------------------------------------------------
+
+    execute console command "execute as @e[type=chicken,tag=cr_on] run tag @s add cr_was_on"
+
+    execute console command "execute as @e[type=chicken,tag=!cr_on] run tag @s remove cr_was_on"
+
+
+# ============================================================
+# B BLOCK LOOP
+# ============================================================
+
+every {@b_interval}:
+
+    if {cr.running} is not true:
+
+        stop
+
+    # ========================================================
+    # B Marker
+    # ========================================================
+
+    loop all entities where [type of input is marker and input has tag "cr_b"]:
+
+        # ----------------------------------------------------
+        # 30% → AIR
+        # 70% → SEA LANTERN
+        # ----------------------------------------------------
+
+        if random integer between 1 and 10 <= 3:
+
+            execute console command "execute positioned at %s run setblock ~ ~ ~ minecraft:air" with loop-entity
+
+        else:
+
+            execute console command "execute positioned at %s run setblock ~ ~ ~ minecraft:sea_lantern" with loop-entity
