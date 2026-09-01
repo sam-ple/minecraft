@@ -1,0 +1,332 @@
+# ============================================================
+# CIRCLE RACE START SYSTEM
+# Version : v0.1.00
+#
+# Minecraft Java Edition + Paper + Skript
+#
+# ============================================================
+#
+# 【概要】
+#
+#   火のついていない焚き火の近くにある石ブロックを
+#   クリックするとゲームを開始する。
+#
+#
+# 【START】
+#
+#   石ブロックをクリック
+#        ↓
+#   石ブロック消滅
+#        ↓
+#   火のついていない焚き火
+#        ↓
+#   火のついた焚き火
+#        ↓
+#   GAME START
+#
+#
+# 【END】
+#
+#   /circlerace end
+#
+#        ↓
+#   火のついた焚き火
+#        ↓
+#   火のついていない焚き火
+#        ↓
+#   石ブロック復活
+#
+#
+# ============================================================
+
+
+options:
+    prefix: &8[&6CircleRace&8]&r
+
+
+# ============================================================
+# GAME STATE
+# ============================================================
+
+
+# ------------------------------------------------------------
+# START POSITION SET
+#
+# 現在位置をスタート地点として登録。
+#
+# 登録された場所の
+#
+#   中心     → 火のついていない焚き火
+#   1ブロック横 → スタート用石
+#
+# として使用する。
+#
+# ------------------------------------------------------------
+
+
+command /circlerace set:
+    permission: op
+    trigger:
+
+        set {_x} to floor(x-coordinate of player)
+        set {_y} to floor(y-coordinate of player)
+        set {_z} to floor(z-coordinate of player)
+
+        set {circlerace.center} to location at {_x}, {_y}, {_z}
+
+        # ----------------------------------------------------
+        # 中心に火のついていない焚き火
+        # ----------------------------------------------------
+
+        set block at {circlerace.center} to campfire
+
+        # ----------------------------------------------------
+        # 焚き火の状態をOFF
+        # ----------------------------------------------------
+
+        set {circlerace.running} to false
+
+        # ----------------------------------------------------
+        # スタート用石
+        #
+        # 今回は焚き火の東側に配置
+        # ----------------------------------------------------
+
+        set {_stone} to location at ({_x} + 1), {_y}, {_z}
+
+        set block at {_stone} to stone
+
+        set {circlerace.startblock} to {_stone}
+
+        send "{@prefix} &aCircle Race start system set!" to player
+
+        send "{@prefix} &7Campfire: &f%{circlerace.center}%" to player
+
+        send "{@prefix} &7Start block: &f%{circlerace.startblock}%" to player
+
+
+# ============================================================
+# START BLOCK CLICK
+# ============================================================
+
+
+on right click on stone:
+
+    # --------------------------------------------------------
+    # スタート地点が登録されていない場合
+    # --------------------------------------------------------
+
+    if {circlerace.startblock} is not set:
+        stop
+
+
+    # --------------------------------------------------------
+    # クリックされた石が登録された石か確認
+    # --------------------------------------------------------
+
+    if location of event-block is not {circlerace.startblock}:
+        stop
+
+
+    # --------------------------------------------------------
+    # すでにゲーム中なら何もしない
+    # --------------------------------------------------------
+
+    if {circlerace.running} is true:
+        send "{@prefix} &cGame is already running." to player
+        stop
+
+
+    # --------------------------------------------------------
+    # 中心の焚き火
+    # --------------------------------------------------------
+
+    set {_campfire} to {circlerace.center}
+
+
+    # --------------------------------------------------------
+    # 焚き火が存在するか確認
+    # --------------------------------------------------------
+
+    if block at {_campfire} is not campfire:
+        send "{@prefix} &cCampfire not found." to player
+        stop
+
+
+    # ========================================================
+    # GAME START
+    # ========================================================
+
+    set {circlerace.running} to true
+
+
+    # --------------------------------------------------------
+    # スタート用石を削除
+    # --------------------------------------------------------
+
+    set block at event-block to air
+
+
+    # --------------------------------------------------------
+    # 焚き火を点火
+    # --------------------------------------------------------
+
+    set block at {_campfire} to campfire
+
+
+    # --------------------------------------------------------
+    # lit=true に変更
+    # --------------------------------------------------------
+
+    set block data of {_campfire} to "lit=true"
+
+
+    # --------------------------------------------------------
+    # 全員へ通知
+    # --------------------------------------------------------
+
+    send "{@prefix} &a&lCIRCLE RACE START!" to all players
+
+
+    # --------------------------------------------------------
+    # 実行者へ通知
+    # --------------------------------------------------------
+
+    send "{@prefix} &7Start block activated." to player
+
+
+# ============================================================
+# END
+# ============================================================
+
+
+command /circlerace end:
+    permission: op
+    trigger:
+
+        # ----------------------------------------------------
+        # ゲーム中でない場合
+        # ----------------------------------------------------
+
+        if {circlerace.running} is not true:
+            send "{@prefix} &7Game is not running." to player
+            stop
+
+
+        # ====================================================
+        # GAME END
+        # ====================================================
+
+        set {circlerace.running} to false
+
+
+        # ----------------------------------------------------
+        # 焚き火を消す
+        # ----------------------------------------------------
+
+        if {circlerace.center} is set:
+
+            set block at {circlerace.center} to campfire
+
+            set block data of {circlerace.center} to "lit=false"
+
+
+        # ----------------------------------------------------
+        # スタート用石を復活
+        # ----------------------------------------------------
+
+        if {circlerace.startblock} is set:
+
+            set block at {circlerace.startblock} to stone
+
+
+        # ----------------------------------------------------
+        # 全員へ通知
+        # ----------------------------------------------------
+
+        send "{@prefix} &c&lCIRCLE RACE END!" to all players
+
+
+        # ----------------------------------------------------
+        # 実行者へ通知
+        # ----------------------------------------------------
+
+        send "{@prefix} &7Start system restored." to player
+
+
+# ============================================================
+# RESET
+# ============================================================
+
+
+command /circlerace reset:
+    permission: op
+    trigger:
+
+        set {circlerace.running} to false
+
+
+        # ----------------------------------------------------
+        # 焚き火を消す
+        # ----------------------------------------------------
+
+        if {circlerace.center} is set:
+
+            set block at {circlerace.center} to campfire
+
+            set block data of {circlerace.center} to "lit=false"
+
+
+        # ----------------------------------------------------
+        # 石を戻す
+        # ----------------------------------------------------
+
+        if {circlerace.startblock} is set:
+
+            set block at {circlerace.startblock} to stone
+
+
+        # ----------------------------------------------------
+        # 登録情報削除
+        # ----------------------------------------------------
+
+        delete {circlerace.center}
+        delete {circlerace.startblock}
+
+
+        send "{@prefix} &eReset complete." to player
+
+
+# ============================================================
+# STATUS
+# ============================================================
+
+
+command /circlerace status:
+    permission: op
+    trigger:
+
+        send "&8&m--------------------------------"
+        send "&6CIRCLE RACE"
+        send "&8&m--------------------------------"
+
+
+        if {circlerace.running} is true:
+            send "&7State: &aRUNNING"
+        else:
+            send "&7State: &cSTOPPED"
+
+
+        if {circlerace.center} is set:
+            send "&7Campfire: &aSET"
+        else:
+            send "&7Campfire: &cNOT SET"
+
+
+        if {circlerace.startblock} is set:
+            send "&7Start block: &aSET"
+        else:
+            send "&7Start block: &cNOT SET"
+
+
+        send "&8&m--------------------------------"

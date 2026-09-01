@@ -62,6 +62,10 @@ options:
     # --------------------------------------------------------
 
     capture-item: nether star
+    # capture-item: stick
+    # capture-item: brush
+    # capture-item: glass bottle
+    # capture-item-name: 
 
     # --------------------------------------------------------
     # 捕獲距離
