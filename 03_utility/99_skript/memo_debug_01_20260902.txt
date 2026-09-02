@@ -1,0 +1,272 @@
+# Minecraft Paper + Skript
+
+# 一般的なサーバーデバッグツール作成プロンプト
+
+Minecraft Java Edition + Paper + Skript環境で使用する、
+管理者向けの「一般的なサーバーデバッグツール」を作成したい。
+
+## 目的
+
+現在稼働しているMinecraftサーバーの状態を、
+ゲーム内コマンドから簡単に確認できるようにする。
+
+まずはSkript変数の全一覧などの特殊なデバッグではなく、
+Minecraftサーバーとして一般的に確認できる情報を対象とする。
+
+将来的には、このツールを拡張して
+Skript変数や各ミニゲームの状態も確認できるようにしたい。
+
+---
+
+## 環境
+
+* Minecraft Java Edition
+* Paper
+* Java 25
+* Skript 2.16.1
+* Multiverse-Core使用
+* 複数ワールド構成
+* ミニゲームサーバーとして使用
+* 主にMineScriptでステージ生成、Skriptでゲームシステムを管理
+
+---
+
+## 基本コマンド
+
+管理者専用コマンドとして、
+
+/debug
+
+を実装する。
+
+権限を持たないプレイヤーは使用できないようにする。
+
+---
+
+## /debugで確認したい情報
+
+### 1. Server
+
+サーバー全体の基本情報。
+
+* 現在のオンラインプレイヤー数
+* オンラインプレイヤー一覧
+
+将来的には、
+
+* TPS
+* MSPT
+* メモリ使用量
+* CPU負荷
+* その他パフォーマンス情報
+
+も追加できる構造にする。
+
+---
+
+### 2. Worlds
+
+現在サーバーに存在するワールドを一覧表示する。
+
+各ワールドについて、
+
+* ワールド名
+* Spawn地点
+
+などを確認できるようにする。
+
+将来的には、
+
+* プレイヤー数
+* Entity数
+* Chunk数
+* ワールドボーダー
+* 時刻
+* 天候
+
+なども確認できるようにしたい。
+
+---
+
+### 3. Player Status
+
+現在オンラインの全プレイヤーについて、
+
+* プレイヤー名
+* 現在いるワールド
+* X / Y / Z座標
+* GameMode
+* Health
+* Food Level
+
+などを確認する。
+
+---
+
+### 4. 自分自身の状態
+
+/debugを実行した管理者自身について、
+
+* 現在のワールド
+* 座標
+* GameMode
+* Health
+* Food Level
+
+などを確認できるようにする。
+
+---
+
+## 表示形式
+
+チャット上で見やすい形式にする。
+
+例：
+
+========================================
+SERVER DEBUG
+============
+
+[SERVER]
+
+Players: 3
+
+Online:
+crocadooo
+PlayerA
+PlayerB
+
+[WORLDS]
+
+world
+Spawn: ...
+
+world_nether
+Spawn: ...
+
+LINERACE
+Spawn: ...
+
+[PLAYER STATUS]
+
+croocadooo
+World: LINERACE
+Location: 100, 65, 200
+Gamemode: adventure
+Health: 20/20
+Food: 20
+
+[YOUR STATUS]
+
+World: LINERACE
+Location: 100, 65, 200
+Gamemode: adventure
+Health: 20/20
+Food: 20
+
+========================================
+DEBUG COMPLETE
+==============
+
+---
+
+## 設計方針
+
+最初から機能を詰め込みすぎず、
+Skript 2.16.1で確実に動作する基本機能から実装する。
+
+特に、
+
+* 構文エラーが起きにくい
+* Paper + Skript環境で動作する
+* 管理者だけが使用できる
+* チャット表示が見やすい
+* 後から機能追加しやすい
+
+ことを重視する。
+
+---
+
+## 将来的な拡張
+
+基本版が正常に動作した後、以下を追加したい。
+
+### Performance
+
+/debug performance
+
+* TPS
+* MSPT
+* メモリ使用量
+* Entity数
+* Chunk関連情報
+
+### Entities
+
+/debug entities
+
+* 全Entity数
+* Mob数
+* Item数
+* その他Entity数
+
+### Scoreboard
+
+/debug scoreboard
+
+現在存在するScoreboardの状態を確認。
+
+### Teams
+
+/debug teams
+
+現在存在するTeamを確認。
+
+### Skript Variables
+
+/debug variables
+
+Skriptが保持している変数を確認。
+
+特に、
+
+{linerace.*}
+{orerace.*}
+{farrace.*}
+{tetsusen.*}
+{jinro.*}
+
+など、各ミニゲームの変数が残っていないか確認できるようにする。
+
+---
+
+## 最終的な目的
+
+このツールを、
+
+「サーバーで現在何が起きているのかを確認するための
+管理者用デバッグコンソール」
+
+として育てる。
+
+特に今後、
+
+* TETSUSEN
+* LINERACE
+* FARRACE
+* ORERACE
+* JINRO
+* Advancement Race
+* Death Log Race
+
+など複数のミニゲームを同じサーバー上で運用するため、
+
+「ゲーム終了後に何が残っているのか」
+「ワールドを削除しても何が残るのか」
+「プレイヤーにどんな状態が残っているのか」
+「サーバーにどの程度負荷がかかっているのか」
+
+を確認できるツールにしたい。
+
+ただし、まずは一般的なサーバーデバッグ機能から開始し、
+動作確認後に段階的に拡張する。

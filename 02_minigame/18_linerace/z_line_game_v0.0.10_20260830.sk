@@ -1,6 +1,6 @@
 # ============================================================
 # LINERACE GAME SYSTEM
-# Version : v0.1.10
+# Version : v0.2.10
 #
 # Minecraft Java Edition
 # Paper + Skript 2.16.1
@@ -43,8 +43,19 @@
 # ・Other blocks behave normally
 # ・Final position is calculated at game end
 # ・Final result is shown to all players
-# ・End countdown starts immediately at 0:00
-#   5 → 4 → 3 → 2 → 1 → GAME SET
+# ・End countdown:
+#     0:00 → 5 → 4 → 3 → 2 → 1 → GAME SET
+#
+# ============================================================
+# SAFETY / STABILITY
+#
+# ・Registration data survives /reload
+# ・START validates registered player data
+# ・RESPAWN handlers are merged
+# ・RESET removes registered player heads
+# ・STOP / GAME SET clean protection data
+# ・Game ID prevents old delayed processes from interfering
+# ・BossBar is restored when a player rejoins
 #
 # ============================================================
 
@@ -57,53 +68,43 @@ on load:
 
     # --------------------------------------------------------
     # Runtime state
+    #
+    # IMPORTANT:
+    # Registration data is NOT deleted on reload.
     # --------------------------------------------------------
 
     set {linerace.running} to false
     set {linerace.setup} to false
     set {linerace.countdown} to false
+    set {linerace.finish} to false
 
     set {linerace.time} to 0
     set {linerace.duration} to 900
     set {linerace.night} to false
-    set {linerace.finish} to false
-
 
     # --------------------------------------------------------
-    # Runtime player data
+    # Game ID
     #
-    # Registration data is intentionally deleted on reload.
+    # Used to prevent old delayed processes
+    # from interfering with a new game.
     # --------------------------------------------------------
 
-    delete {linerace.player::*}
-    delete {linerace.lane.player::*}
-
-
-    # --------------------------------------------------------
-    # Start position data
-    # --------------------------------------------------------
-
-    delete {linerace.start.x::*}
-    delete {linerace.start.y::*}
-    delete {linerace.start.z::*}
-    delete {linerace.start.world::*}
+    if {linerace.game.id} is not set:
+        set {linerace.game.id} to 0
 
 
     # --------------------------------------------------------
-    # Head position data
-    # --------------------------------------------------------
-
-    delete {linerace.head.x::*}
-    delete {linerace.head.y::*}
-    delete {linerace.head.z::*}
-    delete {linerace.head.world::*}
-
-
-    # --------------------------------------------------------
-    # Protection data
+    # Runtime protection
     # --------------------------------------------------------
 
     delete {linerace.protection::*}
+
+
+    # --------------------------------------------------------
+    # Current distance
+    # --------------------------------------------------------
+
+    delete {linerace.distance::*}
 
 
     # --------------------------------------------------------
@@ -115,6 +116,9 @@ on load:
 
     # --------------------------------------------------------
     # Scoreboard objective
+    #
+    # If it already exists, Minecraft simply reports
+    # that it already exists. The objective itself is kept.
     # --------------------------------------------------------
 
     execute console command "scoreboard objectives add linerace.distance dummy Distance"
@@ -140,7 +144,16 @@ on load:
     execute console command "scoreboard objectives setdisplay sidebar"
 
 
-    send "&aLineRace System loaded." to console
+    # --------------------------------------------------------
+    # Reset TAB for online players
+    # --------------------------------------------------------
+
+    loop all players:
+
+        set tab list name of loop-player to "%loop-player%"
+
+
+    send "&aLineRace System v0.2.10 loaded." to console
 
 
 # ============================================================
@@ -156,7 +169,7 @@ command /line:
     trigger:
 
         # ----------------------------------------------------
-        # Count registered players
+        # Count registered ONLINE players
         # ----------------------------------------------------
 
         set {_count} to 0
@@ -169,12 +182,22 @@ command /line:
 
 
         # ----------------------------------------------------
-        # Status text
+        # Status
         # ----------------------------------------------------
 
         if {linerace.running} is true:
 
-            set {_status} to "&aRUNNING"
+            if {linerace.countdown} is true:
+
+                set {_status} to "&6COUNTDOWN"
+
+            else:
+
+                set {_status} to "&aRUNNING"
+
+        else if {linerace.finish} is true:
+
+            set {_status} to "&cFINISHING"
 
         else if {linerace.setup} is true:
 
@@ -186,7 +209,7 @@ command /line:
 
 
         # ----------------------------------------------------
-        # Time text
+        # Time
         # ----------------------------------------------------
 
         set {_minutes} to floor({linerace.duration} / 60)
@@ -196,8 +219,6 @@ command /line:
 
         # ----------------------------------------------------
         # GUI
-        #
-        # 3 rows
         # ----------------------------------------------------
 
         set {_gui} to chest inventory with 3 rows named "&6&lLINERACE"
@@ -294,6 +315,13 @@ on inventory click:
             stop
 
 
+        if {linerace.finish} is true:
+
+            send "&cLineRace is finishing. Please wait for GAME SET." to player
+
+            stop
+
+
         set {linerace.setup} to true
 
 
@@ -328,9 +356,18 @@ on inventory click:
 
 
         # ----------------------------------------------------
-        # Count players
-        #
-        # No minimum player count other than 1.
+        # Finish countdown
+        # ----------------------------------------------------
+
+        if {linerace.finish} is true:
+
+            send "&cLineRace is finishing. Please wait for GAME SET." to player
+
+            stop
+
+
+        # ----------------------------------------------------
+        # Count registered players
         # ----------------------------------------------------
 
         set {_count} to 0
@@ -350,18 +387,86 @@ on inventory click:
 
 
         # ----------------------------------------------------
-        # START automatically finishes SET mode.
+        # Maximum 5 lanes
+        # ----------------------------------------------------
+
+        if {_count} > 5:
+
+            send "&cToo many registered players." to player
+            send "&7Maximum players: 5" to player
+
+            stop
+
+
+        # ----------------------------------------------------
+        # START preflight validation
         #
-        # This is important:
-        # Even if SET mode is still active,
-        # START is allowed.
+        # Every online registered player must have:
+        # ・lane
+        # ・start X
+        # ・start Y
+        # ・start Z
+        # ・world
+        # ----------------------------------------------------
+
+        set {_valid} to true
+
+        loop all players:
+
+            if {linerace.player::%loop-player%} is set:
+
+                set {_p} to loop-player
+
+                if {linerace.player::%{_p}%} is not set:
+
+                    set {_valid} to false
+
+                if {linerace.start.x::%{_p}%} is not set:
+
+                    set {_valid} to false
+
+                if {linerace.start.y::%{_p}%} is not set:
+
+                    set {_valid} to false
+
+                if {linerace.start.z::%{_p}%} is not set:
+
+                    set {_valid} to false
+
+                if {linerace.start.world::%{_p}%} is not set:
+
+                    set {_valid} to false
+
+
+        if {_valid} is not true:
+
+            send "&cSTART failed." to player
+            send "&7One or more registered players have invalid start data." to player
+
+            stop
+
+
+        # ----------------------------------------------------
+        # START automatically finishes SET mode
         # ----------------------------------------------------
 
         set {linerace.setup} to false
 
 
         # ----------------------------------------------------
-        # Start preparation
+        # New game ID
+        #
+        # This invalidates all delayed processing from
+        # previous games.
+        # ----------------------------------------------------
+
+        add 1 to {linerace.game.id}
+
+        set {_gameID} to {linerace.game.id}
+
+
+        # ----------------------------------------------------
+        # Start state
         # ----------------------------------------------------
 
         set {linerace.running} to true
@@ -387,17 +492,12 @@ on inventory click:
 
 
         # ----------------------------------------------------
-        # Create BossBar
+        # BossBar
         #
-        # Native Skript BossBar
-        #
-        # blue is used as the closest standard
-        # Minecraft BossBar color to cyan.
-        #
-        # solid = no segmentation
+        # Initial display uses selected game duration.
         # ----------------------------------------------------
 
-        set {_bar} to a new keyed blue bossbar with key "linerace:timer" with title "LINERACE 15:00"
+        set {_bar} to a new keyed blue bossbar with key "linerace:timer" with title "LINERACE %{linerace.duration / 60}:00"
 
         set progress of {_bar} to 100%
 
@@ -416,7 +516,7 @@ on inventory click:
 
 
         # ----------------------------------------------------
-        # Move players to start
+        # Move registered players to start
         # ----------------------------------------------------
 
         loop all players:
@@ -447,7 +547,6 @@ on inventory click:
             set {_spawnY} to floor({_y})
             set {_spawnZ} to floor({_z})
 
-
             execute console command "spawnpoint %{_p}% %{_spawnX}% %{_spawnY}% %{_spawnZ}%"
 
 
@@ -459,8 +558,10 @@ on inventory click:
 
 
             # ------------------------------------------------
-            # Final distance reset
+            # Distance reset
             # ------------------------------------------------
+
+            set {linerace.distance::%{_p}%} to 0
 
             set {linerace.final.distance::%{_p}%} to 0
 
@@ -470,6 +571,15 @@ on inventory click:
             # ------------------------------------------------
 
             set {linerace.protection::%{_p}%} to true
+
+
+            # ------------------------------------------------
+            # TAB
+            # ------------------------------------------------
+
+            set {_lane} to {linerace.player::%{_p}%}
+
+            set tab list name of {_p} to "&7[%{_lane}%] &f%{_p}% &8- &e0m"
 
 
             # ------------------------------------------------
@@ -487,15 +597,43 @@ on inventory click:
 
         wait 1 second
 
+        # ----------------------------------------------------
+        # Check that this is still the same game
+        # ----------------------------------------------------
+
+        if {linerace.game.id} is not {_gameID}:
+
+            stop
+
+        if {linerace.running} is not true:
+
+            stop
+
 
         send title "&e&l2" with subtitle "&fGET READY" to all players
 
         wait 1 second
 
+        if {linerace.game.id} is not {_gameID}:
+
+            stop
+
+        if {linerace.running} is not true:
+
+            stop
+
 
         send title "&a&l1" with subtitle "&fGET READY" to all players
 
         wait 1 second
+
+        if {linerace.game.id} is not {_gameID}:
+
+            stop
+
+        if {linerace.running} is not true:
+
+            stop
 
 
         # ----------------------------------------------------
@@ -553,6 +691,13 @@ on inventory click:
             stop
 
 
+        if {linerace.finish} is true:
+
+            send "&cTime cannot be changed while finishing." to player
+
+            stop
+
+
         # ----------------------------------------------------
         # Cycle:
         #
@@ -573,7 +718,6 @@ on inventory click:
 
 
         set {_minutes} to floor({linerace.duration} / 60)
-
 
         send "&bGame time set to %{_minutes}% minutes." to player
 
@@ -597,6 +741,13 @@ on inventory click:
 
 
         # ----------------------------------------------------
+        # Invalidate delayed processing
+        # ----------------------------------------------------
+
+        add 1 to {linerace.game.id}
+
+
+        # ----------------------------------------------------
         # Stop game
         # ----------------------------------------------------
 
@@ -604,6 +755,9 @@ on inventory click:
         set {linerace.countdown} to false
         set {linerace.setup} to false
         set {linerace.finish} to false
+
+        set {linerace.time} to 0
+        set {linerace.night} to false
 
 
         # ----------------------------------------------------
@@ -627,7 +781,7 @@ on inventory click:
 
 
         # ----------------------------------------------------
-        # Reset score
+        # Reset scores
         # ----------------------------------------------------
 
         loop all players:
@@ -660,10 +814,39 @@ on inventory click:
             set {_world} to {linerace.start.world::%{_p}%}
 
 
+            # ------------------------------------------------
+            # Protection
+            # ------------------------------------------------
+
             set {linerace.protection::%{_p}%} to true
 
 
+            # ------------------------------------------------
+            # Distance reset
+            # ------------------------------------------------
+
+            set {linerace.distance::%{_p}%} to 0
+
+
+            # ------------------------------------------------
+            # TAB reset
+            # ------------------------------------------------
+
+            set {_lane} to {linerace.player::%{_p}%}
+
+            set tab list name of {_p} to "&7[%{_lane}%] &f%{_p}% &8- &e0m"
+
+
+            # ------------------------------------------------
+            # Teleport
+            # ------------------------------------------------
+
             teleport {_p} to location({_x}, {_y}, {_z}, {_world})
+
+
+            # Game is already stopped, so protection is
+            # no longer needed.
+            delete {linerace.protection::%{_p}%}
 
 
         # ----------------------------------------------------
@@ -678,7 +861,6 @@ on inventory click:
         send "&c&l==============================" to all players
         send "" to all players
 
-
         stop
 
 
@@ -689,6 +871,13 @@ on inventory click:
     if clicked slot is 19:
 
         close player's inventory
+
+
+        # ----------------------------------------------------
+        # Invalidate all delayed processing
+        # ----------------------------------------------------
+
+        add 1 to {linerace.game.id}
 
 
         # ----------------------------------------------------
@@ -760,6 +949,15 @@ on inventory click:
 
 
         # ----------------------------------------------------
+        # Reset TAB
+        # ----------------------------------------------------
+
+        loop all players:
+
+            set tab list name of loop-player to "%loop-player%"
+
+
+        # ----------------------------------------------------
         # Delete registration data
         # ----------------------------------------------------
 
@@ -795,6 +993,13 @@ on inventory click:
 
 
         # ----------------------------------------------------
+        # Delete distance
+        # ----------------------------------------------------
+
+        delete {linerace.distance::*}
+
+
+        # ----------------------------------------------------
         # Delete final distance
         # ----------------------------------------------------
 
@@ -812,7 +1017,6 @@ on inventory click:
         send "&fGame time has been reset to 15 minutes." to all players
         send "&c&l==============================" to all players
         send "" to all players
-
 
         stop
 
@@ -833,6 +1037,24 @@ on right click on stone button:
     # --------------------------------------------------------
 
     if {linerace.setup} is not true:
+
+        stop
+
+
+    # --------------------------------------------------------
+    # Running check
+    # --------------------------------------------------------
+
+    if {linerace.running} is true:
+
+        stop
+
+
+    # --------------------------------------------------------
+    # Finish check
+    # --------------------------------------------------------
+
+    if {linerace.finish} is true:
 
         stop
 
@@ -913,6 +1135,26 @@ on right click on stone button:
     if {linerace.lane.player::%{_color}%} is set:
 
         send "&cThis lane is already occupied." to player
+
+        stop
+
+
+    # ========================================================
+    # CHECK MAX PLAYERS
+    # ========================================================
+
+    set {_count} to 0
+
+    loop all players:
+
+        if {linerace.player::%loop-player%} is set:
+
+            add 1 to {_count}
+
+
+    if {_count} >= 5:
+
+        send "&cMaximum 5 players can register." to player
 
         stop
 
@@ -1071,10 +1313,24 @@ on right click on stone button:
 
 
     # ========================================================
+    # DISTANCE
+    # ========================================================
+
+    set {linerace.distance::%player%} to 0
+
+
+    # ========================================================
     # PROTECTION
     # ========================================================
 
     set {linerace.protection::%player%} to true
+
+
+    # ========================================================
+    # TAB
+    # ========================================================
+
+    set tab list name of player to "&7[%{_color}%] &f%player% &8- &e0m"
 
 
     # ========================================================
@@ -1087,7 +1343,15 @@ on right click on stone button:
     wait 1 second
 
 
-    delete {linerace.protection::%player%}
+    # --------------------------------------------------------
+    # Make sure player is still registered and no game started
+    # --------------------------------------------------------
+
+    if {linerace.player::%player%} is set:
+
+        if {linerace.running} is not true:
+
+            delete {linerace.protection::%player%}
 
 
     # ========================================================
@@ -1143,6 +1407,7 @@ on break:
 # ・Lane check
 # ・Distance
 # ・TAB display
+# ・Action Bar
 # ============================================================
 
 every 2 ticks:
@@ -1203,6 +1468,8 @@ every 2 ticks:
 
         # ====================================================
         # DISTANCE
+        #
+        # Only Z direction is counted.
         # ====================================================
 
         set {_distanceRaw} to {_pz} - {_sz}
@@ -1216,6 +1483,13 @@ every 2 ticks:
 
 
         # ====================================================
+        # SAVE DISTANCE
+        # ====================================================
+
+        set {linerace.distance::%{_p}%} to {_distance}
+
+
+        # ====================================================
         # SCOREBOARD
         # ====================================================
 
@@ -1224,8 +1498,6 @@ every 2 ticks:
 
         # ====================================================
         # TAB
-        #
-        # TAB player list name:
         #
         # [LANE] PLAYER - DISTANCEm
         # ====================================================
@@ -1251,6 +1523,8 @@ every 2 ticks:
 
         # ====================================================
         # LANE CHECK
+        #
+        # Player dies if X deviation is greater than 1 block.
         # ====================================================
 
         if {_absdiff} > 1:
@@ -1273,14 +1547,23 @@ every 2 ticks:
 # Night:
 #   Halfway point
 #
-# IMPORTANT:
+# End:
 #
-# At remaining 0 seconds:
-#   BossBar becomes 0:00
-#   Immediately starts:
-#   5 → 4 → 3 → 2 → 1 → GAME SET
+#   0:00
+#      ↓
+#   5
+#      ↓
+#   4
+#      ↓
+#   3
+#      ↓
+#   2
+#      ↓
+#   1
+#      ↓
+#   GAME SET
 #
-# There is no extra 1-second delay at 0:00.
+# GAME SET is exactly 5 seconds after 0:00.
 # ============================================================
 
 every 1 second:
@@ -1300,8 +1583,6 @@ every 1 second:
 
     # ========================================================
     # NIGHT
-    #
-    # Half of selected game duration
     # ========================================================
 
     set {_halfTime} to {linerace.duration} / 2
@@ -1374,15 +1655,30 @@ every 1 second:
             stop
 
 
+        # ----------------------------------------------------
+        # FINISH state
+        #
+        # running becomes false.
+        # finish remains true until GAME SET.
+        # ----------------------------------------------------
+
         set {linerace.finish} to true
         set {linerace.running} to false
+        set {linerace.countdown} to false
+
+
+        # ----------------------------------------------------
+        # Save current game ID.
+        #
+        # If RESET / START changes the ID during the
+        # countdown, this process terminates.
+        # ----------------------------------------------------
+
+        set {_finishGameID} to {linerace.game.id}
 
 
         # ====================================================
-        # BossBar
-        #
-        # 0:00 is displayed immediately.
-        # Then finish countdown starts.
+        # BossBar 0:00
         # ====================================================
 
         set {_bar} to boss bar with key "linerace:timer"
@@ -1462,7 +1758,7 @@ every 1 second:
         # ====================================================
         # TELEPORT TO START
         #
-        # This happens BEFORE the finish countdown.
+        # This happens before the finish countdown.
         # ====================================================
 
         loop all players:
@@ -1491,8 +1787,6 @@ every 1 second:
         # FINISH COUNTDOWN
         #
         # 0:00 → 5 → 4 → 3 → 2 → 1 → GAME SET
-        #
-        # The countdown begins immediately.
         # ====================================================
 
         send title "&c&l5" with subtitle "&f" to all players
@@ -1500,9 +1794,33 @@ every 1 second:
         wait 1 second
 
 
+        # ----------------------------------------------------
+        # Abort if another process changed the game ID.
+        # ----------------------------------------------------
+
+        if {linerace.game.id} is not {_finishGameID}:
+
+            stop
+
+
+        if {linerace.finish} is not true:
+
+            stop
+
+
         send title "&c&l4" with subtitle "&f" to all players
 
         wait 1 second
+
+
+        if {linerace.game.id} is not {_finishGameID}:
+
+            stop
+
+
+        if {linerace.finish} is not true:
+
+            stop
 
 
         send title "&6&l3" with subtitle "&f" to all players
@@ -1510,14 +1828,44 @@ every 1 second:
         wait 1 second
 
 
+        if {linerace.game.id} is not {_finishGameID}:
+
+            stop
+
+
+        if {linerace.finish} is not true:
+
+            stop
+
+
         send title "&e&l2" with subtitle "&f" to all players
 
         wait 1 second
 
 
+        if {linerace.game.id} is not {_finishGameID}:
+
+            stop
+
+
+        if {linerace.finish} is not true:
+
+            stop
+
+
         send title "&a&l1" with subtitle "&f" to all players
 
         wait 1 second
+
+
+        if {linerace.game.id} is not {_finishGameID}:
+
+            stop
+
+
+        if {linerace.finish} is not true:
+
+            stop
 
 
         # ====================================================
@@ -1573,26 +1921,56 @@ every 1 second:
 
 
         # ====================================================
-        # Finish state
+        # TAB
         #
-        # Registration data remains.
+        # Keep final distance visible after GAME SET.
+        # ====================================================
+
+        loop all players:
+
+            if {linerace.player::%loop-player%} is not set:
+
+                continue
+
+
+            set {_p} to loop-player
+
+            set {_lane} to {linerace.player::%{_p}%}
+
+            set {_distance} to {linerace.final.distance::%{_p}%}
+
+
+            set tab list name of {_p} to "&7[%{_lane}%] &f%{_p}% &8- &6%{_distance}%m"
+
+
+        # ====================================================
+        # Reset runtime finish state
         #
-        # Therefore:
+        # Registration remains.
         #
-        # GAME END
-        #   ↓
-        # START
-        #
-        # can be used immediately.
+        # GAME SET → START
+        # is possible immediately.
         # ====================================================
 
         set {linerace.finish} to false
+        set {linerace.time} to 0
+        set {linerace.night} to false
 
         stop
 
 
 # ============================================================
 # RESPAWN
+#
+# During game:
+#
+# ・Return to start
+# ・Reset distance
+# ・Reset scoreboard
+# ・Reset TAB
+# ・Enable temporary protection
+#
+# One handler only.
 # ============================================================
 
 on respawn:
@@ -1632,6 +2010,9 @@ on respawn:
     execute console command "scoreboard players set %player% linerace.distance 0"
 
 
+    set {linerace.distance::%player%} to 0
+
+
     # ========================================================
     # TAB reset
     # ========================================================
@@ -1648,26 +2029,20 @@ on respawn:
     set {linerace.protection::%player%} to true
 
 
-# ============================================================
-# RESPAWN PROTECTION
-# ============================================================
-
-on respawn:
-
-    if {linerace.running} is not true:
-
-        stop
-
-
-    if {linerace.player::%player%} is not set:
-
-        stop
-
+    # ========================================================
+    # Protection release
+    #
+    # Wait until the player has actually respawned.
+    # ========================================================
 
     wait 1 second
 
 
-    delete {linerace.protection::%player%}
+    if {linerace.running} is true:
+
+        if {linerace.player::%player%} is set:
+
+            delete {linerace.protection::%player%}
 
 
 # ============================================================
@@ -1685,9 +2060,19 @@ on quit:
 
         execute console command "scoreboard players reset %player% linerace.distance"
 
+        set {linerace.distance::%player%} to 0
+
 
 # ============================================================
 # JOIN
+#
+# If a registered player rejoins during a game:
+#
+# ・Teleport to start
+# ・Reset distance
+# ・Restore TAB
+# ・Restore BossBar
+# ・Temporary protection
 # ============================================================
 
 on join:
@@ -1741,6 +2126,9 @@ on join:
     execute console command "scoreboard players set %player% linerace.distance 0"
 
 
+    set {linerace.distance::%player%} to 0
+
+
     # ========================================================
     # TAB
     # ========================================================
@@ -1752,8 +2140,6 @@ on join:
 
     # ========================================================
     # BossBar
-    #
-    # Re-add returning player to current BossBar.
     # ========================================================
 
     set {_bar} to boss bar with key "linerace:timer"
@@ -1771,4 +2157,8 @@ on join:
     wait 1 second
 
 
-    delete {linerace.protection::%player%}
+    if {linerace.running} is true:
+
+        if {linerace.player::%player%} is set:
+
+            delete {linerace.protection::%player%}

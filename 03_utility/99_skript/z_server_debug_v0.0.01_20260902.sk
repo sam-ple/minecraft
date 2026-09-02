@@ -1,0 +1,101 @@
+# ============================================================
+# SERVER DEBUG
+# Version : v0.1.00
+#
+# General server status/debug tool
+#
+# Commands
+#   /debug
+#
+# ============================================================
+
+
+command /debug:
+    permission: debug.admin
+    permission message: &cYou don't have permission.
+    trigger:
+
+        send "&8&m----------------------------------------" to player
+        send "&b&lSERVER DEBUG" to player
+        send "&8&m----------------------------------------" to player
+
+        # ----------------------------------------------------
+        # Server
+        # ----------------------------------------------------
+
+        send "&e[SERVER]" to player
+
+        send "  &7Players: &f%number of players%" to player
+
+        send "  &7Online:" to player
+
+        if number of players is 0:
+            send "    &8(none)" to player
+        else:
+            loop all players:
+                send "    &f%loop-player%" to player
+
+
+        # ----------------------------------------------------
+        # Worlds
+        # ----------------------------------------------------
+
+        send "" to player
+        send "&e[WORLDS]" to player
+
+        loop all worlds:
+            send "  &f%loop-world%" to player
+            send "    &7Spawn: &f%spawn location of loop-world%" to player
+
+
+        # ----------------------------------------------------
+        # Players
+        # ----------------------------------------------------
+
+        send "" to player
+        send "&e[PLAYER STATUS]" to player
+
+        if number of players is 0:
+            send "  &8(none)" to player
+        else:
+            loop all players:
+
+                send "  &b%loop-player%" to player
+
+                send "    &7World: &f%world of loop-player%" to player
+
+                send "    &7Location: &f%x-coordinate of loop-player%, %y-coordinate of loop-player%, %z-coordinate of loop-player%" to player
+
+                send "    &7Gamemode: &f%gamemode of loop-player%" to player
+
+                send "    &7Health: &f%health of loop-player%&7/&f%maximum health of loop-player%" to player
+
+                send "    &7Food: &f%food level of loop-player%" to player
+
+
+        # ----------------------------------------------------
+        # Current player
+        # ----------------------------------------------------
+
+        send "" to player
+        send "&e[YOUR STATUS]" to player
+
+        send "  &7World: &f%world of player%" to player
+
+        send "  &7Location: &f%x-coordinate of player%, %y-coordinate of player%, %z-coordinate of player%" to player
+
+        send "  &7Gamemode: &f%gamemode of player%" to player
+
+        send "  &7Health: &f%health of player%&7/&f%maximum health of player%" to player
+
+        send "  &7Food: &f%food level of player%" to player
+
+
+        # ----------------------------------------------------
+        # End
+        # ----------------------------------------------------
+
+        send "" to player
+        send "&8&m----------------------------------------" to player
+        send "&aDEBUG COMPLETE" to player
+        send "&8&m----------------------------------------" to player

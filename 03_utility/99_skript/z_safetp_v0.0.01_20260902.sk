@@ -1,0 +1,296 @@
+# ============================================================
+# SAFE TP MINI TEST
+# Version : v0.1.00
+#
+# Minecraft Java Edition + Paper + Skript
+#
+# PURPOSE
+#
+#   現在地のX/Z座標を固定し、
+#   上空から下方向へ安全なTP地点を検索する。
+#
+# SAFE CONDITION
+#
+#   Y+1  頭上 → 空気
+#   Y    足元 → 空気
+#   Y-1  足場 → solid
+#
+# COMMAND
+#
+#   /safetp test
+#       現在地のX/Zで安全地点を検索してTP
+#
+#   /safetp check
+#       安全地点を検索するだけでTPしない
+#
+# ============================================================
+
+
+# ============================================================
+# OPTIONS
+# ============================================================
+
+options:
+
+    # 検索開始Y座標
+    search-start-y: 320
+
+    # 検索終了Y座標
+    search-end-y: -64
+
+
+# ============================================================
+# LOAD
+# ============================================================
+
+on load:
+
+    send "[SafeTP Test] v0.1.00 Loaded." to console
+
+
+# ============================================================
+# COMMAND
+# ============================================================
+
+command /safetp [<text>]:
+
+    permission: op
+
+    trigger:
+
+
+        # ====================================================
+        # HELP
+        # ====================================================
+
+        if arg-1 is not set:
+
+            send "&e================================" to player
+            send "&eSafe TP Mini Test v0.1.00" to player
+            send "" to player
+            send "&e/safetp test &7- 安全地点を検索してTP" to player
+            send "&e/safetp check &7- 安全地点を検索のみ" to player
+            send "&e================================" to player
+
+            stop
+
+
+        # ====================================================
+        # 現在位置取得
+        # ====================================================
+
+        set {_start-location} to location of player
+
+        set {_x} to x-coordinate of {_start-location}
+        set {_z} to z-coordinate of {_start-location}
+
+        set {_world} to world of player
+
+
+        # ====================================================
+        # X/Zは整数化
+        # ====================================================
+
+        set {_x} to floor({_x})
+        set {_z} to floor({_z})
+
+
+        # ====================================================
+        # START MESSAGE
+        # ====================================================
+
+        send "&e================================" to player
+        send "&e[SafeTP] Searching..." to player
+        send "&7X: %{_x}%  Z: %{_z}%" to player
+        send "&7Y: {@search-start-y} → {@search-end-y}" to player
+        send "&e================================" to player
+
+
+        # ====================================================
+        # SAFE LOCATION SEARCH
+        # ====================================================
+
+        delete {_safe-location}
+
+        set {_y} to {@search-start-y}
+
+
+        # ----------------------------------------------------
+        # 上から下へ検索
+        # ----------------------------------------------------
+
+        while {_y} >= {@search-end-y}:
+
+
+            # =================================================
+            # LOCATION
+            # =================================================
+
+            # 足場
+            set {_ground-location} to location at {_x}, {_y}, {_z} in {_world}
+
+            # プレイヤー足元
+            set {_feet-location} to location at {_x}, {_y} + 1, {_z} in {_world}
+
+            # プレイヤー頭上
+            set {_head-location} to location at {_x}, {_y} + 2, {_z} in {_world}
+
+
+            # =================================================
+            # BLOCK
+            # =================================================
+
+            set {_ground-block} to block at {_ground-location}
+
+            set {_feet-block} to block at {_feet-location}
+
+            set {_head-block} to block at {_head-location}
+
+
+            # =================================================
+            # 足場確認
+            # =================================================
+
+            if {_ground-block} is solid:
+
+
+                # =============================================
+                # 危険ブロック除外
+                # =============================================
+
+                if {_ground-block} is lava:
+
+                    remove 1 from {_y}
+
+                    continue
+
+
+                if {_ground-block} is magma block:
+
+                    remove 1 from {_y}
+
+                    continue
+
+
+                if {_ground-block} is cactus:
+
+                    remove 1 from {_y}
+
+                    continue
+
+
+                if {_ground-block} is campfire:
+
+                    remove 1 from {_y}
+
+                    continue
+
+
+                if {_ground-block} is soul campfire:
+
+                    remove 1 from {_y}
+
+                    continue
+
+
+                # =============================================
+                # 足元空間
+                # =============================================
+
+                if {_feet-block} is air:
+
+
+                    # =========================================
+                    # 頭上空間
+                    # =========================================
+
+                    if {_head-block} is air:
+
+
+                        # =====================================
+                        # SAFE LOCATION FOUND
+                        # =====================================
+
+                        set {_safe-location} to {_feet-location}
+
+                        stop loop
+
+
+            # =================================================
+            # NEXT Y
+            # ====================================================
+
+            remove 1 from {_y}
+
+
+        # ====================================================
+        # RESULT
+        # ====================================================
+
+        if {_safe-location} is not set:
+
+            send "&c================================" to player
+            send "&c[SafeTP] SAFE LOCATION NOT FOUND" to player
+            send "&7X: %{_x}% Z: %{_z}%" to player
+            send "&c================================" to player
+
+            stop
+
+
+        # ====================================================
+        # SAFE LOCATION DATA
+        # ====================================================
+
+        set {_safe-x} to x-coordinate of {_safe-location}
+        set {_safe-y} to y-coordinate of {_safe-location}
+        set {_safe-z} to z-coordinate of {_safe-location}
+
+
+        # ====================================================
+        # CHECK MODE
+        # ====================================================
+
+        if arg-1 is "check":
+
+            send "&a================================" to player
+            send "&a[SafeTP] SAFE LOCATION FOUND" to player
+            send "&7X: %{_safe-x}%" to player
+            send "&7Y: %{_safe-y}%" to player
+            send "&7Z: %{_safe-z}%" to player
+            send "&eTPは実行していません。" to player
+            send "&a================================" to player
+
+            stop
+
+
+        # ====================================================
+        # TEST MODE
+        # ====================================================
+
+        if arg-1 is "test":
+
+            send "&a================================" to player
+            send "&a[SafeTP] SAFE LOCATION FOUND" to player
+            send "&7X: %{_safe-x}%" to player
+            send "&7Y: %{_safe-y}%" to player
+            send "&7Z: %{_safe-z}%" to player
+            send "&eTeleporting..." to player
+            send "&a================================" to player
+
+
+            # =================================================
+            # TELEPORT
+            # =================================================
+
+            teleport player to {_safe-location}
+
+            stop
+
+
+        # ====================================================
+        # UNKNOWN COMMAND
+        # ====================================================
+
+        send "&cUnknown command." to player
+        send "&e/safetp test" to player
+        send "&e/safetp check" to player
