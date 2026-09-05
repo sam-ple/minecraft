@@ -497,7 +497,9 @@ on inventory click:
         # Initial display uses selected game duration.
         # ----------------------------------------------------
 
-        set {_bar} to a new keyed blue bossbar with key "linerace:timer" with title "LINERACE %{linerace.duration / 60}:00"
+        set {_minutes} to floor({linerace.duration} / 60)
+
+        set {_bar} to a new keyed blue bossbar with key "linerace:timer" with title "LINERACE %{_minutes}%:00"
 
         set progress of {_bar} to 100%
 
